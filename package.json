@@ -1,0 +1,21 @@
+{
+  "author": {
+    "email": "development@blackhan.com",
+    "name": "Blackhan Software Ltd",
+    "url": "https://github.com/blackhan-software"
+  },
+  "devDependencies": {
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-mathjax3": "^4.3.2",
+    "vitepress": "^1.6.4"
+  },
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "license": "GPL-3.3",
+  "name": "banq-doc",
+  "type": "module",
+  "version": "0.0.0"
+}
