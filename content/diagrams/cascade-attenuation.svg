@@ -1,0 +1,57 @@
+<svg height="294.0px" width="588.0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" font-family="ui-sans-serif, system-ui, sans-serif">
+  <text x="360" y="28" text-anchor="middle" font-size="14" fill="#64748b" letter-spacing="2">CASCADE ATTENUATION</text>
+
+  <!-- LEFT: traditional pool -->
+  <g transform="translate(40,60)">
+    <text x="140" y="0" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Traditional pool</text>
+    <text x="140" y="18" text-anchor="middle" font-size="10" fill="#64748b">100% redeemable</text>
+
+    <!-- bars going down each represents 'positions liquidated' -->
+    <g>
+      <rect x="40" y="40" width="200" height="20" fill="#e2e8f0"/>
+      <rect x="40" y="40" width="180" height="20" fill="#dc2626"/>
+      <text x="50" y="55" font-size="11" fill="#fff">25% shock → 85.7% liquidated</text>
+    </g>
+
+    <!-- arrows showing dump pressure -->
+    <g stroke="#dc2626" stroke-width="1.5" fill="#dc2626">
+      <path d="M 50 80 v 20 M 90 80 v 20 M 130 80 v 20 M 170 80 v 20 M 210 80 v 20" />
+      <path d="M 50 100 l -4 -6 h 8 z M 90 100 l -4 -6 h 8 z M 130 100 l -4 -6 h 8 z M 170 100 l -4 -6 h 8 z M 210 100 l -4 -6 h 8 z" stroke="none"/>
+    </g>
+    <text x="140" y="125" text-anchor="middle" font-size="11" fill="#475569">collateral dumped → price drops further</text>
+
+    <rect x="40" y="140" width="200" height="60" rx="4" fill="#fef2f2" stroke="#fecaca"/>
+    <text x="140" y="165" text-anchor="middle" font-size="12" font-weight="600" fill="#7f1d1d">Cascade</text>
+    <text x="140" y="183" text-anchor="middle" font-size="10" fill="#991b1b">More positions cross H&lt;1</text>
+    <text x="140" y="195" text-anchor="middle" font-size="10" fill="#991b1b">Loop continues</text>
+  </g>
+
+  <!-- RIGHT: locked pool -->
+  <g transform="translate(400,60)">
+    <text x="140" y="0" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">XPower Banq · 100% locked</text>
+    <text x="140" y="18" text-anchor="middle" font-size="10" fill="#64748b">Only interest is redeemable</text>
+
+    <g>
+      <rect x="40" y="40" width="200" height="20" fill="#e2e8f0"/>
+      <rect x="40" y="40" width="62" height="20" fill="#16a34a"/>
+      <text x="50" y="55" font-size="11" fill="#fff">25% shock → 29.4%</text>
+    </g>
+
+    <!-- attenuated arrows -->
+    <g stroke="#94a3b8" stroke-width="1.5" fill="#94a3b8">
+      <path d="M 70 80 v 12 M 130 80 v 12" />
+      <path d="M 70 92 l -4 -6 h 8 z M 130 92 l -4 -6 h 8 z" stroke="none"/>
+    </g>
+    <text x="140" y="125" text-anchor="middle" font-size="11" fill="#475569">positions transfer; assets stay in vault</text>
+
+    <rect x="40" y="140" width="200" height="60" rx="4" fill="#f0fdf4" stroke="#bbf7d0"/>
+    <text x="140" y="165" text-anchor="middle" font-size="12" font-weight="600" fill="#14532d">Attenuated by (1−ϕ)</text>
+    <text x="140" y="183" text-anchor="middle" font-size="10" fill="#15803d">Sell pressure scales with</text>
+    <text x="140" y="195" text-anchor="middle" font-size="10" fill="#15803d">unlocked fraction only</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="360" y="335" text-anchor="middle" font-size="11" fill="#64748b">
+    Simulated 1,000 borrowers, k = 1.5×10⁻⁴ market-impact; full results in Risks → Liquidation
+  </text>
+</svg>

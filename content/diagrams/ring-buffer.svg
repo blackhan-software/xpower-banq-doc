@@ -1,0 +1,84 @@
+<svg height="343.0px" width="588.0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="ui-sans-serif, system-ui, sans-serif">
+  <text x="360" y="28" text-anchor="middle" font-size="14" fill="#64748b" letter-spacing="2">16-SLOT QUARTERLY RING BUFFER</text>
+
+  <!-- ring of 16 slots -->
+  <g transform="translate(360,200)">
+    <!-- decorative outer guide -->
+    <circle r="120" fill="none" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3"/>
+
+    <!-- 16 slots arranged on a circle -->
+    <!-- Mark slots 3, 5, 10 as occupied -->
+    <g font-size="11" font-weight="600">
+      <!-- Generate 16 slots manually so we can mark some -->
+      <!-- helper: each at angle (360/16)*i - 90 -->
+      <!-- slot index labels and circles -->
+      <!-- slot 0 -->
+      <g transform="rotate(-90)"><g transform="translate(120,0) rotate(90)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">0</text></g></g>
+      <!-- slot 1 -->
+      <g transform="rotate(-67.5)"><g transform="translate(120,0) rotate(67.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">1</text></g></g>
+      <!-- 2 -->
+      <g transform="rotate(-45)"><g transform="translate(120,0) rotate(45)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">2</text></g></g>
+      <!-- 3 occupied -->
+      <g transform="rotate(-22.5)"><g transform="translate(120,0) rotate(22.5)">
+        <circle r="18" fill="#3b82f6" stroke="#1d4ed8"/><text text-anchor="middle" y="4" fill="#fff">3</text></g></g>
+      <!-- 4 -->
+      <g transform="rotate(0)"><g transform="translate(120,0) rotate(0)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">4</text></g></g>
+      <!-- 5 occupied -->
+      <g transform="rotate(22.5)"><g transform="translate(120,0) rotate(-22.5)">
+        <circle r="18" fill="#3b82f6" stroke="#1d4ed8"/><text text-anchor="middle" y="4" fill="#fff">5</text></g></g>
+      <!-- 6 -->
+      <g transform="rotate(45)"><g transform="translate(120,0) rotate(-45)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">6</text></g></g>
+      <!-- 7 -->
+      <g transform="rotate(67.5)"><g transform="translate(120,0) rotate(-67.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">7</text></g></g>
+      <!-- 8 -->
+      <g transform="rotate(90)"><g transform="translate(120,0) rotate(-90)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">8</text></g></g>
+      <!-- 9 -->
+      <g transform="rotate(112.5)"><g transform="translate(120,0) rotate(-112.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">9</text></g></g>
+      <!-- 10 occupied -->
+      <g transform="rotate(135)"><g transform="translate(120,0) rotate(-135)">
+        <circle r="18" fill="#3b82f6" stroke="#1d4ed8"/><text text-anchor="middle" y="4" fill="#fff">10</text></g></g>
+      <!-- 11 -->
+      <g transform="rotate(157.5)"><g transform="translate(120,0) rotate(-157.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">11</text></g></g>
+      <!-- 12 -->
+      <g transform="rotate(180)"><g transform="translate(120,0) rotate(180)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">12</text></g></g>
+      <!-- 13 -->
+      <g transform="rotate(-157.5)"><g transform="translate(120,0) rotate(157.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">13</text></g></g>
+      <!-- 14 -->
+      <g transform="rotate(-135)"><g transform="translate(120,0) rotate(135)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">14</text></g></g>
+      <!-- 15 -->
+      <g transform="rotate(-112.5)"><g transform="translate(120,0) rotate(112.5)">
+        <circle r="18" fill="#f1f5f9" stroke="#cbd5e1"/><text text-anchor="middle" y="4" fill="#64748b">15</text></g></g>
+    </g>
+
+    <!-- center label -->
+    <text text-anchor="middle" y="-8" font-size="12" fill="#64748b">your locks</text>
+    <text text-anchor="middle" y="14" font-size="20" font-weight="700" fill="#0f172a">3 active</text>
+  </g>
+
+  <!-- legend -->
+  <g transform="translate(255,358)" font-size="11" fill="#475569">
+    <circle cx="8" cy="6" r="8" fill="#3b82f6" stroke="#1d4ed8"/>
+    <text x="22" y="10">occupied · expires at slot end</text>
+
+    <circle cx="190" cy="6" r="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="204" y="10">empty</text>
+  </g>
+  <text x="360" y="386" text-anchor="middle" font-size="11" fill="#64748b">
+    Each slot = ~91 days  ·  Total horizon ≈ 4 years  ·  Permanent locks bypass the ring
+  </text>
+  <text x="360" y="408" text-anchor="middle" font-size="11" fill="#64748b">
+    Locks expire automatically. Total locked depth is reconstructed in O(1) from 3 packed words.
+  </text>
+</svg>
