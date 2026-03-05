@@ -1,0 +1,34 @@
+name: CI Paper
+
+on:
+  push:
+    branches: [main]
+    paths: ['paper/**']
+  pull_request:
+    branches: [main]
+    paths: ['paper/**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build PDFs
+        run: bash paper/000.banq-all/banq-all.sh
+
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: banq-pdfs
+          path: |
+            paper/000.banq-all/banq-all.pdf
+            paper/001.banq-pro/banq-pro.pdf
+            paper/002.banq-lck/banq-lck.pdf
+            paper/003.banq-log/banq-log.pdf
+            paper/004.banq-mtp/banq-mtp.pdf
+            paper/005.banq-sim/banq-sim.pdf
+            paper/006.banq-ref/banq-ref.pdf
