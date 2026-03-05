@@ -1,0 +1,104 @@
+name: GH Paper
+
+on:
+  push:
+    tags: ['v*'] # triggers workflow on pushing a tag
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install poppler-utils
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends poppler-utils
+
+      - name: Build PDFs
+        run: bash paper/xpower-banq-all.sh
+
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: xpower-banq-pdfs
+          path: |
+            paper/xpower-banq-all.pdf
+            paper/xpower-banq-apx.pdf
+            paper/xpower-banq-lck.pdf
+            paper/xpower-banq.pdf
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download PDFs
+        uses: actions/download-artifact@v4
+        with:
+          name: xpower-banq-pdfs
+          path: ./dist
+
+      - name: List PDFs
+        run: ls -R ./dist
+
+      - name: IPFS PDFs (pin and get CIDs)
+        env:
+          IPFS_API_TOKEN: ${{ secrets.IPFS_API_TOKEN }}
+        run: |
+          for pdf in ./dist/*.pdf; do
+            RESP=$(curl -s -w "\n%{http_code}" -X POST \
+              -H "Authorization: Bearer ${IPFS_API_TOKEN}" \
+              -F "file=@${pdf}" "https://ipfs.xpowerbanq.com/api/v0/add")
+            CODE=$(echo "$RESP" | tail -1)
+            BODY=$(echo "$RESP" | sed '$d')
+            echo "Response for $(basename $pdf) [HTTP $CODE]: $BODY"
+            HASH=$(echo "$BODY" | jq -r '.Hash')
+            echo "Pinned $(basename $pdf): $HASH"
+            NAME=$(basename $pdf .pdf | tr '-' '_')
+            echo "${NAME}=$HASH" >> "$GITHUB_ENV"
+          done
+
+      - name: IPFS links (append to RELEASE.md)
+        run: |
+          short() { echo "${1:0:8}…${1: -4}"; }
+          cat >> ./paper/RELEASE.md << EOF
+
+          ## 🌐 IPFS
+
+          | PDF | Link |
+          | --- | ---- |
+          | \`xpower-banq.pdf\`     | [\`https://ipfs.io/ipfs/$(short ${xpower_banq})\`](https://ipfs.io/ipfs/${xpower_banq}) |
+          | \`xpower-banq-apx.pdf\` | [\`https://ipfs.io/ipfs/$(short ${xpower_banq_apx})\`](https://ipfs.io/ipfs/${xpower_banq_apx}) |
+          | \`xpower-banq-lck.pdf\` | [\`https://ipfs.io/ipfs/$(short ${xpower_banq_lck})\`](https://ipfs.io/ipfs/${xpower_banq_lck}) |
+          | \`xpower-banq-all.pdf\` | [\`https://ipfs.io/ipfs/$(short ${xpower_banq_all})\`](https://ipfs.io/ipfs/${xpower_banq_all}) |
+
+          ## ⚖️ Copyright
+
+          © 2025 [Moorhead LLC](#)
+          EOF
+
+      - name: Delete GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ${{ github.ref_name }} --yes || true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            -t "XPower Banq Paper ${{ github.ref_name }}" \
+            -F ./paper/RELEASE.md \
+            ./dist/xpower-banq-all.pdf \
+            ./dist/xpower-banq-apx.pdf \
+            ./dist/xpower-banq-lck.pdf \
+            ./dist/xpower-banq.pdf
