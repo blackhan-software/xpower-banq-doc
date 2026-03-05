@@ -1,0 +1,73 @@
+<svg height="228.667px" width="588.0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" font-family="ui-sans-serif, system-ui, sans-serif">
+  <text x="360" y="28" text-anchor="middle" font-size="14" fill="#64748b" letter-spacing="2">PROTOCOL LIFECYCLE</text>
+
+  <!-- 5 numbered cards -->
+  <g font-family="ui-sans-serif, system-ui, sans-serif">
+    <!-- 1 supply -->
+    <g transform="translate(20,80)">
+      <rect width="120" height="100" rx="8" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="22" cy="22" r="14" fill="#0f172a"/>
+      <text x="22" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+      <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Supply</text>
+      <text x="60" y="74" text-anchor="middle" font-size="10" fill="#64748b">deposit collateral</text>
+      <text x="60" y="88" text-anchor="middle" font-size="10" fill="#64748b">earn supply rate</text>
+    </g>
+
+    <!-- arrow -->
+    <path d="M 144 132 L 158 132" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <polygon points="158,128 166,132 158,136" fill="#94a3b8"/>
+
+    <!-- 2 borrow -->
+    <g transform="translate(170,80)">
+      <rect width="120" height="100" rx="8" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="22" cy="22" r="14" fill="#0f172a"/>
+      <text x="22" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+      <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Borrow</text>
+      <text x="60" y="74" text-anchor="middle" font-size="10" fill="#64748b">up to 66.67% LTV</text>
+      <text x="60" y="88" text-anchor="middle" font-size="10" fill="#64748b">pay borrow rate</text>
+    </g>
+
+    <path d="M 294 132 L 308 132" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <polygon points="308,128 316,132 308,136" fill="#94a3b8"/>
+
+    <!-- 3 lock (optional) -->
+    <g transform="translate(320,80)">
+      <rect width="120" height="100" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+      <circle cx="22" cy="22" r="14" fill="#3b82f6"/>
+      <text x="22" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">3</text>
+      <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">Lock</text>
+      <text x="60" y="74" text-anchor="middle" font-size="10" fill="#1e40af">optional</text>
+      <text x="60" y="88" text-anchor="middle" font-size="10" fill="#1e40af">earn bonus / pay malus</text>
+    </g>
+
+    <path d="M 444 132 L 458 132" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <polygon points="458,128 466,132 458,136" fill="#94a3b8"/>
+
+    <!-- 4 monitor -->
+    <g transform="translate(470,80)">
+      <rect width="120" height="100" rx="8" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="22" cy="22" r="14" fill="#0f172a"/>
+      <text x="22" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">4</text>
+      <text x="60" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Monitor</text>
+      <text x="60" y="74" text-anchor="middle" font-size="10" fill="#64748b">keep H ≥ 100%</text>
+      <text x="60" y="88" text-anchor="middle" font-size="10" fill="#64748b">avoid liquidation</text>
+    </g>
+
+    <path d="M 594 132 L 608 132" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <polygon points="608,128 616,132 608,136" fill="#94a3b8"/>
+
+    <!-- 5 settle/redeem -->
+    <g transform="translate(620,80)">
+      <rect width="80" height="100" rx="8" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="22" cy="22" r="14" fill="#0f172a"/>
+      <text x="22" y="27" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">5</text>
+      <text x="40" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Exit</text>
+      <text x="40" y="74" text-anchor="middle" font-size="10" fill="#64748b">settle</text>
+      <text x="40" y="88" text-anchor="middle" font-size="10" fill="#64748b">redeem</text>
+    </g>
+  </g>
+
+  <text x="360" y="220" text-anchor="middle" font-size="11" fill="#64748b">
+    Standard lending flow with one optional step (3) and a different liquidation model behind the scenes.
+  </text>
+</svg>

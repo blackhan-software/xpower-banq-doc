@@ -1,0 +1,63 @@
+<svg height="294.0px" width="588.0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" font-family="ui-sans-serif, system-ui, sans-serif">
+  <text x="360" y="28" text-anchor="middle" font-size="14" fill="#64748b" letter-spacing="2">INTEREST RATE CURVE</text>
+
+  <g transform="translate(100,60)">
+    <line x1="0" y1="220" x2="500" y2="220" stroke="#94a3b8"/>
+    <line x1="0" y1="0" x2="0" y2="220" stroke="#94a3b8"/>
+
+    <!-- R* / U* indicators: horizontal at R* from y-axis to kink, vertical at U* from x-axis up -->
+    <g stroke="#94a3b8" stroke-dasharray="2 4" fill="none">
+      <line x1="0" y1="180" x2="450" y2="180"/>
+      <line x1="450" y1="220" x2="450" y2="0"/>
+    </g>
+
+    <!-- kinked rate r_k(U): linear up to U*=0.9 then steep -->
+    <path d="M 0 220 L 450 180 L 500 80" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+
+    <!-- base risk premium b: lifts the whole curve by a constant amount (here b > 0 for illustration) -->
+    <path d="M 0 208 L 450 168 L 500 68" stroke="#8b5cf6" stroke-width="1.5" fill="none"/>
+    <!-- vertical lift marker at the kink -->
+    <line x1="450" y1="168" x2="450" y2="180" stroke="#8b5cf6" stroke-width="1"/>
+    <text x="456" y="162" font-size="10" fill="#8b5cf6" font-weight="600">+ b</text>
+    <text x="6" y="162" font-size="10" fill="#8b5cf6">gross rate R(U) = r_k(U) + b</text>
+
+    <!-- SPREAD region: shaded band between borrow and supply -->
+    <path d="M 0 208 L 450 153 L 500 53 L 500 83 Q 480 120 450 195 Q 225 216 0 220 Z"
+          fill="#f59e0b" fill-opacity="0.18" stroke="none"/>
+
+    <!-- BORROW: R(U) × (1 + s) -->
+    <path d="M 0 208 L 450 153 L 500 53"
+          stroke="#dc2626" stroke-width="2.5" fill="none"/>
+    <!-- SUPPLY: U × R(U) × (1 − s) — starts at 0 and dips below the plain spread line
+         because the rate is scaled by utilization; equals borrow-side spread only at U = 100% -->
+    <path d="M 0 220 Q 225 216 450 195 Q 480 120 500 83"
+          stroke="#16a34a" stroke-width="2.5" fill="none"/>
+
+    <!-- kink marker -->
+    <circle cx="450" cy="180" r="4" fill="#0f172a"/>
+    <text x="456" y="196" text-anchor="start" font-size="10" fill="#0f172a" font-weight="600">(U*, R*)</text>
+
+    <!-- axis labels -->
+    <text x="0" y="240" text-anchor="middle" font-size="11" fill="#64748b">0%</text>
+    <text x="450" y="240" text-anchor="middle" font-size="11" fill="#64748b">U* = 90%</text>
+    <text x="500" y="240" text-anchor="middle" font-size="11" fill="#64748b">100%</text>
+    <text x="250" y="262" text-anchor="middle" font-size="12" fill="#475569">utilization U</text>
+
+    <text x="-12" y="225" text-anchor="end" font-size="11" fill="#64748b">0%</text>
+    <text x="-12" y="184" text-anchor="end" font-size="11" fill="#64748b">R* = 10%</text>
+    <text x="-12" y="35" text-anchor="end" font-size="11" fill="#64748b">200%</text>
+    <text x="-60" y="115" text-anchor="middle" font-size="12" fill="#475569" transform="rotate(-90,-60,115)">interest rate</text>
+
+    <!-- legend -->
+    <g transform="translate(60,20)">
+      <rect width="14" height="3" fill="#94a3b8"/>
+      <text x="20" y="5" font-size="11" fill="#475569">kinked rate r_k(U)</text>
+      <rect y="14" width="14" height="3" fill="#8b5cf6"/>
+      <text x="20" y="19" font-size="11" fill="#475569">gross rate r_k(U) + b (base risk premium)</text>
+      <rect y="28" width="14" height="3" fill="#dc2626"/>
+      <text x="20" y="33" font-size="11" fill="#475569">borrow rate · R(U) × (1 + s)</text>
+      <rect y="42" width="14" height="3" fill="#16a34a"/>
+      <text x="20" y="47" font-size="11" fill="#475569">supply rate · U × R(U) × (1 − s)</text>
+    </g>
+  </g>
+</svg>

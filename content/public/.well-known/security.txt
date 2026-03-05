@@ -1,0 +1,4 @@
+Contact: mailto:security@xpowerbanq.com
+Expires: 2027-05-20T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.xpowerbanq.com/.well-known/security.txt

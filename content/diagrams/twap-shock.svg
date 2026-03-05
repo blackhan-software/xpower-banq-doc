@@ -1,0 +1,65 @@
+<svg height="294.0px" width="588.0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" font-family="ui-sans-serif, system-ui, sans-serif">
+  <text x="360" y="28" text-anchor="middle" font-size="14" fill="#0f172a" letter-spacing="2">TWAP ORACLE · SMOOTHING UNDER PRICE SHOCK</text>
+
+  <g transform="translate(80,60)">
+    <line x1="0" y1="220" x2="560" y2="220" stroke="#475569"/>
+    <line x1="0" y1="0" x2="0" y2="220" stroke="#475569"/>
+
+    <!-- baseline reference line at 100 -->
+    <line x1="0" y1="180" x2="560" y2="180" stroke="#94a3b8" stroke-dasharray="2 4"/>
+    <!-- target line at 150 -->
+    <line x1="0" y1="40" x2="560" y2="40" stroke="#94a3b8" stroke-dasharray="2 4"/>
+
+    <!-- spot price step (jumps at x=80, 50% shock) -->
+    <path d="M 0 180 L 80 180 L 80 40 L 560 40"
+          stroke="#dc2626" stroke-width="2" fill="none" stroke-dasharray="6 3"/>
+    <text x="555" y="34" text-anchor="end" font-size="10" fill="#dc2626" font-weight="600">spot price</text>
+
+    <!-- TWAP HL=2 (fast) -->
+    <path d="M 0 180 L 80 180
+             C 100 175, 130 100, 200 60
+             S 350 40, 560 40"
+          stroke="#f97316" stroke-width="2" fill="none"/>
+
+    <!-- TWAP HL=12 (default) -->
+    <path d="M 0 180 L 80 180
+             C 120 178, 200 145, 320 100
+             S 500 50, 560 45"
+          stroke="#3b82f6" stroke-width="2" fill="none"/>
+
+    <!-- TWAP HL=24 (slow) -->
+    <path d="M 0 180 L 80 180
+             C 140 178, 260 165, 400 130
+             S 540 80, 560 70"
+          stroke="#8b5cf6" stroke-width="2" fill="none"/>
+
+    <!-- two-tick immunity highlight -->
+    <rect x="80" y="0" width="60" height="220" fill="#fde68a" opacity="0.25"/>
+    <text x="110" y="14" text-anchor="middle" font-size="10" fill="#92400e" font-weight="600">two-tick</text>
+    <text x="110" y="26" text-anchor="middle" font-size="10" fill="#92400e" font-weight="600">immunity</text>
+
+    <!-- axis labels -->
+    <text x="0" y="240" text-anchor="middle" font-size="11" fill="#0f172a">0</text>
+    <text x="80" y="240" text-anchor="middle" font-size="11" fill="#0f172a">shock</text>
+    <text x="280" y="240" text-anchor="middle" font-size="11" fill="#0f172a">refresh periods (hours)</text>
+    <text x="560" y="240" text-anchor="middle" font-size="11" fill="#0f172a">+30h</text>
+
+    <text x="-12" y="184" text-anchor="end" font-size="11" fill="#0f172a">100</text>
+    <text x="-12" y="44" text-anchor="end" font-size="11" fill="#0f172a">150</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(160,310)" font-size="11" fill="#475569">
+    <line x1="0" y1="0" x2="20" y2="0" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 3"/>
+    <text x="26" y="4">spot</text>
+
+    <line x1="80" y1="0" x2="100" y2="0" stroke="#f97316" stroke-width="2"/>
+    <text x="106" y="4">HL=2 (fast)</text>
+
+    <line x1="200" y1="0" x2="220" y2="0" stroke="#3b82f6" stroke-width="2"/>
+    <text x="226" y="4">HL=12 (default)</text>
+
+    <line x1="340" y1="0" x2="360" y2="0" stroke="#8b5cf6" stroke-width="2"/>
+    <text x="366" y="4">HL=24 (slow)</text>
+  </g>
+</svg>
