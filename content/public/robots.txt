@@ -1,0 +1,52 @@
+# XPower Banq documentation is open: we welcome both indexing and citation
+# from traditional search engines and AI assistants. The Ask-AI widget on
+# this site already serves the same content; explicit allows below signal
+# that intent to crawlers that look for opt-in flags.
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# Google AI (separate from Googlebot; controls Gemini / AI Overviews use)
+User-agent: Google-Extended
+Allow: /
+
+# Apple Intelligence
+User-agent: Applebot-Extended
+Allow: /
+
+# Common Crawl (feeds many downstream training sets)
+User-agent: CCBot
+Allow: /
+
+# All other crawlers
+User-agent: *
+Allow: /
+
+Sitemap: https://www.xpowerbanq.com/sitemap.xml
