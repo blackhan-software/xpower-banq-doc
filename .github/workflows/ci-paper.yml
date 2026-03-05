@@ -1,0 +1,37 @@
+name: CI Paper
+
+on:
+  push:
+    branches: [main]
+    paths: ['paper/**']
+  pull_request:
+    branches: [main]
+    paths: ['paper/**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install poppler-utils
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends poppler-utils
+
+      - name: Build PDFs
+        run: bash paper/000.banq-all/banq-all.sh
+
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: banq-pdfs
+          path: |
+            paper/000.banq-all/banq-all.pdf
+            paper/001.banq-pro/banq-pro.pdf
+            paper/002.banq-apx/banq-apx.pdf
+            paper/003.banq-lck/banq-lck.pdf
+            paper/004.banq-log/banq-log.pdf
