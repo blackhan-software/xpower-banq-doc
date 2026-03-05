@@ -1,0 +1,44 @@
+name: GH Pages
+
+on:
+  push:
+    branches: [main]
+
+  # allows to run workflow manually
+  workflow_dispatch:
+
+# sets the GITHUB_TOKEN permissions
+permissions:
+  id-token: write
+  contents: read
+  pages: write
+
+# allow one concurrent deployment
+concurrency:
+  cancel-in-progress: true
+  group: "pages"
+
+jobs:
+  deploy:
+    environment:
+      url: ${{ steps.deployment.outputs.page_url }}
+      name: github-pages
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - run: npm ci
+      - run: npm run build
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: "./.vitepress/dist"
+
+      - uses: actions/deploy-pages@v5
+        id: deployment

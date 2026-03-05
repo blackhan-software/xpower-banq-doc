@@ -1,0 +1,30 @@
+name: CI Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ci-worker.yml"
+      - "scripts/ai-corpus/**"
+      - "scripts/shared/**"
+      - "content/**"
+      - "worker/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          cache-dependency-path: worker/package-lock.json
+          node-version: 24
+          cache: "npm"
+
+      - run: npm install --prefix worker
+      - run: node scripts/ai-corpus/index.mjs
+      - run: npm --prefix worker run typecheck
+      - run: npm --prefix worker run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
