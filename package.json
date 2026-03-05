@@ -1,0 +1,31 @@
+{
+  "author": {
+    "email": "development@blackhan.com",
+    "name": "Blackhan Software Ltd",
+    "url": "https://github.com/blackhan-software"
+  },
+  "devDependencies": {
+    "@types/markdown-it-container": "^4.0.0",
+    "bootstrap-icons": "^1.13.1",
+    "markdown-it": "^14.3.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-mathjax3": "^4.3.2",
+    "vitepress": "^1.6.4"
+  },
+  "scripts": {
+    "ai-corpus": "node scripts/ai-corpus/index.mjs",
+    "ai-worker:dev": "npm --prefix worker run dev",
+    "ai-worker:deploy": "npm --prefix worker run deploy",
+    "ai-worker:install": "npm --prefix worker install",
+    "svg-widths": "node scripts/svg-widths/index.mjs",
+    "predev": "npm run svg-widths && npm run ai-corpus",
+    "prebuild": "npm run svg-widths && npm run ai-corpus",
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "license": "GPL-3.3",
+  "name": "banq-doc",
+  "type": "module",
+  "version": "0.0.0"
+}
