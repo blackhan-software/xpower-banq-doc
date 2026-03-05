@@ -1,0 +1,44 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "never",
+                "showReuseMessage": false
+            },
+            "label": "Run VitePress Dev",
+            "type": "shell",
+            "command": "npx vitepress dev docs"
+        },
+        {
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "label": "Run VitePress Build",
+            "type": "shell",
+            "command": "npx vitepress build docs"
+        },
+        {
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "label": "Run VitePress Preview",
+            "type": "shell",
+            "command": "npx vitepress preview docs"
+        }
+    ]
+}
