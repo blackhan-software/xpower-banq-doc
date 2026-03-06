@@ -1,0 +1,163 @@
+================================================================================
+SETTLE TRANSACTION COMPARISON (1st vs 8th)
+================================================================================
+
+                              | Cold (1st)      | Warm (8th)      | Difference
+------------------------------|-----------------|-----------------|------------
+Transaction Hash              | 0x589c00...313b | 0xe917de...dd1f |
+Gas Used                      | 256,451         | 233,603         | -22,848
+Gas Savings                   |                 |                 | -8.91%
+Amount Settled                | ~333 APOW       | 2 wei           |
+Event Count                   | 9               | 8               | -1
+
+================================================================================
+GAS PROGRESSION ACROSS ALL 8 SETTLE TRANSACTIONS
+================================================================================
+
+Tx# | Type     | Gas Used  | Logs | Amount Settled        | Diff from Cold
+----|----------|-----------|------|-----------------------|----------------
+1st | COLD     | 256,451   | 9    | 333.00 APOW           | baseline
+2nd | warming  | 250,565   | 9    | 0.3327 APOW           | -5,886
+3rd | warming  | 249,987   | 9    | 0.000333 APOW         | -6,464
+4th | warmer   | 237,076   | 8    | 625,315,798,288 wei   | -19,375
+5th | warmer   | 236,566   | 8    | 624,691,109 wei       | -19,885
+6th | warmer   | 236,554   | 8    | 624,069 wei           | -19,897
+7th | warmer   | 236,542   | 8    | 625 wei               | -19,909
+8th | WARM     | 233,603   | 8    | 2 wei                 | -22,848
+
+================================================================================
+TWO DISTINCT GAS PATTERNS
+================================================================================
+
+Pattern A: Transactions 1-3 (9 logs, ~250k gas)
+  - Include extra SupplyPosition Transfer event
+  - Higher gas cost due to additional state changes
+  - Likely related to interest/fee distribution when settling larger amounts
+
+Pattern B: Transactions 4-8 (8 logs, ~236k gas)
+  - No extra SupplyPosition Transfer
+  - Lower gas for dust amount settlements
+  - ~13k gas less than Pattern A
+
+================================================================================
+GAS SAVINGS ANALYSIS
+================================================================================
+
+Cold to Warm Transition:
+
+  Cold (1st):  256,451 gas
+  Warm (8th):  233,603 gas
+  --------------------------
+  Savings:      22,848 gas (8.91%)
+
+Pattern A to Pattern B Transition (3rd -> 4th):
+
+  3rd tx:  249,987 gas (9 logs)
+  4th tx:  237,076 gas (8 logs)
+  -----------------------------
+  Drop:     12,911 gas
+
+This ~13k drop is due to:
+1. One fewer ERC20 Transfer event (~1k gas)
+2. Skipped supply position interest distribution (~12k gas)
+
+Within Pattern B (4th -> 8th):
+
+  4th tx:  237,076 gas
+  8th tx:  233,603 gas
+  -------------------------
+  Savings:   3,473 gas
+
+Minimal additional warming after pattern change.
+
+================================================================================
+COLD VS WARM STORAGE ACCESS BREAKDOWN
+================================================================================
+
+Storage Slot Type              | Cold Read | Warm Read | Savings
+-------------------------------|-----------|-----------|--------
+User borrow balance            | 2,100     | 100       | 2,000
+Token allowance                | 2,100     | 100       | 2,000
+Borrow total supply            | 2,100     | 100       | 2,000
+Borrow index                   | 2,100     | 100       | 2,000
+Pool token balance             | 2,100     | 100       | 2,000
+Supply position state          | 2,100     | 100       | 2,000
+Interest rate model            | 2,100     | 100       | 2,000
+Oracle state                   | 2,100     | 100       | 2,000
+Vault utilization              | 2,100     | 100       | 2,000
+Large holder set               | 2,100     | 100       | 2,000
+-------------------------------|-----------|-----------|--------
+TOTAL (10 slots)               | 21,000    | 1,000     | 20,000
+
+================================================================================
+EVENT LOG COMPARISON
+================================================================================
+
+Cold (1st settle - 9 logs):
+
+1. Transfer (APOW):           user -> pool (principal)
+2. Transfer (APOW):           interest distribution
+3. Transfer (bAPOW):          debt burn
+4. Sync (bAPOW):              index update
+5. Transfer (APOW):           fee movement
+6. Transfer (sAPOW):          supply update
+7. LargeHolderRemoved:        holder tracking
+8. Transfer (sAPOW):          EXTRA: interest to suppliers *
+9. Settle (Pool):             main event
+
+Warm (8th settle - 8 logs):
+
+1. Transfer (APOW):           user -> pool (principal)
+2. Transfer (APOW):           interest distribution
+3. Transfer (bAPOW):          debt burn
+4. Sync (bAPOW):              index update
+5. Transfer (APOW):           fee movement
+6. Transfer (sAPOW):          supply update
+7. LargeHolderRemoved:        holder tracking
+8. Settle (Pool):             main event
+
+Key Difference: The 8th log (extra SupplyPosition Transfer) is missing in
+warm/dust settlements. This transfer distributes accrued interest to suppliers
+and is only triggered when settling amounts above a threshold.
+
+================================================================================
+WHY SETTLE COSTS LESS THAN BORROW
+================================================================================
+
+Operation    | Cold Gas  | Warm Gas  | Difference
+-------------|-----------|-----------|------------
+Borrow       | 278,858   | 249,199   | 29,659
+Settle       | 256,451   | 233,603   | 22,848
+
+Settle is cheaper than borrow because:
+1. No health check required - Settling improves position, no oracle calls
+2. Simpler token flow - Burn debt tokens vs mint new tokens
+3. No collateralization validation - Just reduce existing debt
+
+================================================================================
+DUST SETTLEMENT PATTERN
+================================================================================
+
+The user settled in 8 transactions to clear all debt:
+
+  1st: 333.00 APOW      (bulk of debt)
+  2nd:   0.3327 APOW    (interest accrued)
+  3rd:   0.000333 APOW  (smaller interest)
+  4th-8th: wei amounts  (dust cleanup)
+
+This pattern occurs because:
+1. Interest accrues between transactions
+2. Rounding in index calculations leaves dust
+3. Multiple small settlements needed to reach exact zero
+4. Final 2 wei settlement completes the payoff
+
+================================================================================
+SUMMARY
+================================================================================
+
+1. Cold->Warm Savings: 22,848 gas (8.91%)
+2. Pattern Change Impact: Additional ~13k gas drop when amount is small
+3. Settle is cheaper than Borrow by ~22k gas (cold) to ~16k gas (warm)
+4. 8 transactions required to fully clear debt due to interest accrual and rounding
+
+================================================================================

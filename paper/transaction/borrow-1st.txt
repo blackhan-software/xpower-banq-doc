@@ -1,0 +1,161 @@
+================================================================================
+BORROW TRANSACTION ANALYSIS (1st)
+================================================================================
+
+Transaction Hash: 0xcbb120b950afc3eda87bc14d41c9d3c767705329f1090ef405288f64117e42cd
+Block Number:     77,402,732
+Gas Used:         563,546
+Gas Price:        1.540 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4B25D36bCC2c20473D061CD41937737A80673e94
+To (Pool):        0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Function:         borrow(address,uint256)
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           166.500000000000000000 APOW (requested)
+bAPOW Minted:     166.500000000000000000 bAPOW
+APOW Received:    164.851485148514851484 APOW (after vault exit fee)
+
+================================================================================
+CONTRACTS INVOLVED
+================================================================================
+
+Pool:             0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Token (APOW):     0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3
+Vault (vAPOW):    0xca12939d7a8189fe063a32f1280258498c734565
+BorrowPosition:   0xf11a4e8d4c53bc6d7d59393dae3e6f611a2c6f22 (bAPOW)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.borrow(APOW, 166.5e18)
+  |
+  +-- ReentrancyGuardTransient check (TSTORE/TLOAD)
+  |
+  +-- RateLimited modifier (storage reads)
+  |
+  +-- PowLimited modifier (timestamp storage)
+  |
+  +-- _borrow(user, APOW, 166.5e18, lock=false)
+  |     +-- BorrowPosition.mint(user, 166.5e18, lock=false)
+  |     |     +-- _accrueInterest(user)
+  |     |     |     +-- totalOf(user) = 0 (no prior debt)
+  |     |     |     +-- No interest to accrue
+  |     |     |
+  |     |     +-- Cap checks (abs_limit, rel_limit)
+  |     |     |
+  |     |     +-- _mint(user, 166.5e18)
+  |     |           +-- _increaseHolders(0, 166.5e18)
+  |     |           |     +-- balanceOf(user) = 0
+  |     |           |     +-- 0 < threshold (1e18)
+  |     |           |     +-- _largeHolders++ [COLD SSTORE: N->N+1]
+  |     |           |
+  |     |           +-- _reindexMore(user, 166.5e18)
+  |     |           |     +-- _principalOf[user] += amount [COLD SSTORE: 0->X]
+  |     |           |     +-- _userIndex[user] = index     [COLD SSTORE: 0->X]
+  |     |           |
+  |     |           +-- super._update(0, user, 166.5e18)
+  |     |           |     +-- _totalSupply += value        [WARM SSTORE]
+  |     |           |     +-- _balances[user] += value     [COLD SSTORE: 0->X]
+  |     |           |     +-- emit Transfer                [Transfer #1 - bAPOW]
+  |     |           |
+  |     |           +-- _reindex()
+  |     |                 +-- Vault.util() call
+  |     |                 +-- _index_ray, _stamp updates   [WARM SSTORE]
+  |     |                 +-- emit Reindex                 [Reindex #1]
+  |     |
+  |     +-- vault.redeem(shares, user, pool)
+  |           +-- convertToShares(166.5e18)
+  |           +-- vAPOW burn (pool shares)            [Transfer #2 - vAPOW burn]
+  |           +-- APOW transfer to user               [Transfer #3 - APOW]
+  |           +-- emit Withdraw                       [Withdraw event]
+  |
+  +-- _checkHealth(user)
+  |     +-- healthOf(user) calculation
+  |     +-- Reads supply positions, oracle prices
+  |     +-- Requires wnav_supply >= wnav_borrow
+  |
+  +-- emit Borrow                                     [Borrow event]
+
+================================================================================
+COLD STORAGE WRITES (SSTORE 0->X = 22,100 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[user]               | bAPOW           | 22,100
+_principalOf[user]            | bAPOW           | 22,100
+_userIndex[user]              | bAPOW           | 22,100
+_largeHolders (counter)       | bAPOW           | 2,900*
+------------------------------|-----------------|----------
+TOTAL COLD SSTORE             |                 | 69,200
+
+* _largeHolders already non-zero (other users exist), so warm modify
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Intrinsic gas (21,000 base + calldata)      | ~24,000  | 4.3%
+ReentrancyGuard + modifiers                 | ~8,000   | 1.4%
+BorrowPosition.mint() - cold storage        | ~175,000 | 31.1%
+  - Cold SSTOREs (3 x 22,100)               |  66,300  |
+  - Large holders increment                 |   2,900  |
+  - External calls (util, decimals)         |  ~9,000  |
+  - Computation + events                    | ~96,800  |
+Vault.redeem() + vAPOW burn                 | ~85,000  | 15.1%
+_checkHealth() - health computation         | ~120,000 | 21.3%
+  - healthOf() calculation                  | ~80,000  |
+  - Oracle price queries                    | ~40,000  |
+Pool events + misc                          | ~151,546 | 26.9%
+--------------------------------------------|----------|------
+TOTAL                                       | 563,546  | 100%
+
+================================================================================
+EVENTS EMITTED (6 total)
+================================================================================
+
+1. Transfer (bAPOW): mint to user           | 166.5 bAPOW
+2. Reindex (bAPOW): position index update   |
+3. Transfer (vAPOW): burn from pool         | vault shares
+4. Transfer (APOW): vault -> user           | ~164.85 APOW
+5. Withdraw (vAPOW): vault redemption       |
+6. Borrow (Pool): main event                | 166.5 APOW, lock=false
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a COLD borrow - user has never borrowed APOW before
+2. All user-specific mappings start at zero, requiring expensive cold SSTOREs
+3. The _largeHolders counter is incremented (user crosses 1 APOW threshold)
+4. Cold SSTORE cost (66,300 gas) represents ~12% of total gas
+5. BorrowPosition.mint() is a significant gas consumer at ~31% of total
+6. _checkHealth() adds ~21% overhead for collateral verification
+7. Borrow uses more gas than supply due to health checks + vault redemption
+
+================================================================================
+COMPARISON TO COLD SUPPLY
+================================================================================
+
+                         | Cold Supply  | Cold Borrow  | Difference
+-------------------------|--------------|--------------|------------
+Total Gas                | 363,500      | 563,546      | +200,046
+Position Mint            | ~145,000     | ~175,000     | +30,000
+Health Check             | N/A          | ~120,000     | +120,000
+Vault Operation          | ~45,000      | ~85,000      | +40,000
+                         | (deposit)    | (redeem)     |
+
+Borrow is ~55% more expensive than supply due to:
+- Health check computation (~21%)
+- Vault redemption vs deposit (~7%)
+- Additional event overhead (~5%)
+
+================================================================================

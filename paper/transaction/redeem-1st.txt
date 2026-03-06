@@ -1,0 +1,91 @@
+================================================================================
+REDEEM TRANSACTION ANALYSIS (1st)
+================================================================================
+
+Transaction Hash: 0x0936049411b6a168d35fe46000571c35e966a87f02e9472c2fe0a13de0b6c86b
+Gas Used:         384,707
+Gas Limit:        388,927 (0x5ef3f)
+Gas Price:        1.55 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4b25d36bcc2c20473d061cd41937737a80673e94
+To (Pool):        0x1e7d8d53547b9ac773699041212a78d7bab33387
+Function:         redeem(address,uint256)
+Selector:         0x1e9a6950
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           1,000,000,000,000,000,000,000 wei (1,000 APOW)
+
+================================================================================
+CONTRACTS INVOLVED
+================================================================================
+
+Pool:             0x1e7d8d53547b9ac773699041212a78d7bab33387
+Token (APOW):     0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3
+SupplyPosition:   0x385e2c9180ef482eafd589a8c48ab1f8d0bec1f8
+Vault:            0xca12939d7a8189fe063a32f1280258498c734565
+
+================================================================================
+EVENTS EMITTED (6 total)
+================================================================================
+
+1. Transfer (sAPOW): burn from user         | 1,000 APOW worth
+2. Sync (sAPOW): supply index updated       |
+3. Transfer (vAPOW): burn from pool         | 3,153,413,857,116,330e21 vault shares
+4. Transfer (APOW): vault -> user           | ~1,005.38 APOW (includes interest)
+5. Redeem (Vault): ERC4626 event            | sender: Pool, receiver: User
+6. Redeem (Pool): main event               | 1,000 APOW
+
+================================================================================
+COLD STORAGE ACCESS COSTS
+================================================================================
+
+This is the FIRST redeem in the sequence, so many storage slots are accessed for
+the first time in this block context:
+
+Slot                                  | Access Type            | Gas Cost
+--------------------------------------|------------------------|----------
+User's supply position balance        | COLD READ              | 2,100
+Supply position total supply          | COLD READ              | 2,100
+Supply index state                    | COLD READ              | 2,100
+Vault shares balance (Pool)           | COLD READ              | 2,100
+Vault total assets                    | COLD READ              | 2,100
+Vault total supply                    | COLD READ              | 2,100
+Token balance (Vault)                 | COLD READ              | 2,100
+Token balance (Pool)                  | COLD READ              | 2,100
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Base transaction                            | 21,000   | 5.5%
+Calldata (68 bytes)                         | ~1,088   | 0.3%
+Cold storage reads (~12 slots)              | ~25,200  | 6.5%
+Storage writes (~5 slots)                   | ~25,000  | 6.5%
+Supply position burn                        | ~40,000  | 10.4%
+Vault share burn                            | ~40,000  | 10.4%
+Token transfer (ERC20)                      | ~65,000  | 16.9%
+Index calculations                          | ~20,000  | 5.2%
+Interest accrual                            | ~25,000  | 6.5%
+Event emissions (6 logs)                    | ~6,000   | 1.6%
+ERC4626 preview/convert                     | ~15,000  | 3.9%
+Other computation                           | ~101,419 | 26.4%
+--------------------------------------------|----------|------
+TOTAL                                       | 384,707  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. Redeem returns MORE tokens than requested (1,005.38 vs 1,000 APOW)
+2. The extra ~5.38 APOW is accrued interest earned while supplying
+3. Supply position tokens represent shares in a growing asset pool
+4. User burns 1,000 supply position tokens, receives 1,005.38 underlying APOW
+5. Cold access penalty adds ~15k gas compared to warm redeem
+
+================================================================================

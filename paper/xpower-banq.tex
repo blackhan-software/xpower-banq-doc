@@ -1,0 +1,1143 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+
+% ==============================================================================
+% Packages
+% ==============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{libertinus}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{placeins}  % For \FloatBarrier
+
+% Float parameters to prevent overlapping
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.7}
+
+% Prevent line breaks inside inline math (fixes broken superscripts/sqrt)
+\relpenalty=10000
+\binoppenalty=10000
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+
+% ==============================================================================
+% Colors and Styling
+% ==============================================================================
+\definecolor{codeblue}{RGB}{0,102,204}
+\definecolor{codepurple}{RGB}{128,0,128}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codegray}{RGB}{128,128,128}
+\definecolor{primaryblue}{RGB}{41,98,255}
+\definecolor{warningred}{RGB}{220,53,69}
+\definecolor{successgreen}{RGB}{40,167,69}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=primaryblue,
+    urlcolor=primaryblue
+}
+
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{codeblue}\bfseries,
+    commentstyle=\color{codegreen},
+    stringstyle=\color{codepurple},
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    numbersep=4pt,
+    xleftmargin=2em,
+    framexleftmargin=2em,
+    breaklines=true,
+    frame=single,
+    captionpos=b
+}
+\lstdefinelanguage{Solidity}{
+    keywords={function, returns, return, if, else, for, while, do, break, continue, throw, require, revert, assert, public, private, internal, external, view, pure, payable, memory, storage, calldata, constant, immutable, virtual, override, modifier, event, emit, struct, enum, mapping, contract, interface, library, abstract, is, new, delete, true, false, uint256, uint128, uint64, uint32, uint8, int256, int128, int64, int32, int8, address, bool, bytes, bytes32, string},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[b]'
+}
+
+% ==============================================================================
+% Theorem Environments
+% ==============================================================================
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{property}{Property}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+% ==============================================================================
+% Title and Authors
+% ==============================================================================
+\title{\textbf{\Huge XPower Banq}\\[0.5em]
+\Large A Permissionless DeFi Lending Protocol with\\Lethargic Governance and Beta-Distributed Position Caps}
+
+\author{
+    \textsc{Karun The Rich}\thanks{\url{https://www.xpowerbanq.com}}
+}
+
+\date{}
+
+% ==============================================================================
+% Document Begin
+% ==============================================================================
+\begin{document}
+
+\maketitle
+
+% arXiv-style vertical tag on first page
+\begin{tikzpicture}[remember picture, overlay]
+  \node[rotate=90, anchor=center, font=\Huge, color=codegray]
+    at ([xshift=1cm]current page.west)
+    {preprint:2601~~[q-fin.CP]~~15 Jan 2026};
+\end{tikzpicture}
+
+% ==============================================================================
+% Abstract
+% ==============================================================================
+\begin{abstract}
+We present \textbf{XPower Banq}, a permissionless DeFi lending protocol on the Ethereum Virtual Machine. The protocol introduces: (1)~\emph{optionally locked positions} that attenuate liquidation cascades by factor~$(1{-}\phi)$, (2)~\emph{lethargic governance} with time-weighted parameter transitions bounded by $0.5\times$--$2\times$ per cycle, (3)~\emph{beta-distributed position caps} with holder-count scaling that rate-limits capacity accumulation to $O(\sqrt{k})$ for $k$~accounts, (4)~\emph{transferable debt positions} with inverted ERC20 semantics enabling capital-efficient debt assumption liquidation, and (5)~\emph{log-space TWAP oracles} with bidirectional geometric mean spread computation and logarithmic spread scaling. The protocol prioritizes stability over capital efficiency: default parameters yield 33\% LTV with a 200\% over-collateralization buffer, adjustable via governance. We provide technical analysis of the architecture, security properties, simulation results, and limitations.
+\end{abstract}
+
+\textbf{Keywords:} DeFi, Lending Protocol, Liquidation, Oracle, TWAP, Governance, Interest Rates
+
+% ==============================================================================
+% 1. Introduction
+% ==============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Decentralized lending protocols---Compound~\cite{compound2019}, Aave~\cite{aave2020}, MakerDAO~\cite{makerdao2017}---have established algorithmic interest rate markets as foundational DeFi infrastructure~\cite{bartoletti2021}. Persistent challenges remain: oracle manipulation~\cite{mackinga2022}, governance attacks~\cite{beanstalk2022}, capital inefficiency, and systemic liquidation cascades~\cite{gudgeon2020}.
+
+XPower Banq addresses these through five design choices:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Locked Positions}: Irrevocable position locks attenuate liquidation cascades by factor~$(1{-}\phi)$ through preventing immediate collateral redemption (Section~\ref{subsec:locked-positions}).
+
+\item \textbf{Lethargic Governance}: Multiplicative bounds ($0.5\times$--$2\times$) with asymptotic transitions prevent governance shocks (Section~\ref{subsec:lethargic-governance}).
+
+\item \textbf{Beta-Distributed Caps}: The \mbox{$12\lambda(1{-}\lambda)^2/\sqrt{n{+}2}$} cap function rate-limits capacity accumulation sublinearly (Section~\ref{subsec:beta-caps}).
+
+\item \textbf{Debt Assumption Liquidation}: Transferable debt positions with inverted ERC20 semantics eliminate liquidator capital requirements (Section~\ref{subsec:health-liquidation}).
+
+\item \textbf{Log-Space TWAP Oracle}: Geometric mean temporal averaging with bidirectional spread computation resists flash loan manipulation (Section~\ref{subsec:oracle-twap}).
+\end{enumerate}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys related work and positions our contributions against existing protocols. Section~\ref{sec:architecture} presents the contract architecture, followed by Section~\ref{sec:mechanisms} which details the core mechanisms. Section~\ref{sec:antispam} describes anti-spam protection, and Section~\ref{sec:governance} covers the governance model. Section~\ref{sec:security} provides a security analysis under an explicit adversary model. Section~\ref{sec:evaluation} presents simulation and gas evaluation results, Section~\ref{sec:limitations} discusses limitations, and Section~\ref{sec:conclusion} concludes. Appendices~A--C provide specifications and reference tables. A companion document~\cite{apx} provides extended mathematical analysis, formal proofs, simulation implementations, and reference material.
+
+% ==============================================================================
+% 2. Related Work
+% ==============================================================================
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Lending Protocols.} Compound~\cite{compound2019} introduced algorithmic interest rate markets with utilization-based rate curves and 2-day governance timelocks. Aave~\cite{aave2020} extended this with flash loans, stable rate borrowing, and credit delegation; V3 introduced E-Mode for correlated assets, though liquidation still requires liquid capital. MakerDAO~\cite{makerdao2017} pioneered the CDP model, suffering \$8.3M in losses during ``Black Thursday''~\cite{gudgeon2020}. Euler~\cite{euler2022} pioneered permissionless asset listing with risk-tiered collateral and a reactive rate model. Liquity~\cite{liquity2021} introduced the Stability Pool where pre-deposited capital absorbs liquidations; XPower Banq instead transfers debt to liquidators. Morpho~\cite{morpho2022} optimizes rates via peer-to-peer matching atop existing protocols.
+
+\textbf{Liquidation and MEV.} Gudgeon et al.~\cite{gudgeon2020} analyzed the March~2020 crisis in which cascade effects drained significant protocol value. Perez et al.~\cite{perez2021} showed that liquidation markets are highly concentrated, with the top~5 liquidators capturing over 80\% of value, and Daian et al.~\cite{daian2020} and Qin et al.~\cite{qin2022} quantified MEV extraction from liquidation events.
+
+\textbf{Oracles.} Mackinga et al.~\cite{mackinga2022} demonstrated practical TWAP manipulation, motivating several mitigation approaches. Chainlink~\cite{chainlink2017} provides off-chain aggregation but carries staleness risks during network congestion~\cite{werner2022}. Uniswap~V3~\cite{uniswap2021} introduced geometric mean TWAP computed in ring buffers, and Angeris and Chitra~\cite{angeris2020} formalized manipulation cost bounds for constant function market makers.
+
+\textbf{Governance.} Beanstalk's \$182M governance attack~\cite{beanstalk2022} exploited same-block execution, underscoring the need for rate-bounded governance. Standard timelocks~\cite{openzeppelin2020} constrain the timing of changes but not their magnitude. XPower Banq addresses this with lethargic governance that requires multiple cycles for any significant parameter change.
+
+\textbf{Comparative Analysis.} Table~\ref{tab:protocol-comparison} compares protocols across key dimensions. Some features marked absent may be deliberately omitted by design (e.g., Morpho Blue delegates oracle validation to curators), and XPower Banq's advantages carry trade-offs discussed in Section~\ref{sec:limitations}.
+
+\begin{table*}[htbp]
+\centering
+\caption{Comparative analysis of DeFi lending protocols. Entries reflect architectural choices; absence of a feature may be deliberate.}
+\label{tab:protocol-comparison}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Feature & Compound & Aave & MakerDAO & Liquity & Euler & \textbf{XPower Banq} \\
+\midrule
+1. Liquidation Model & Repayment & Repayment & Auction & Stability Pool & Repayment & Debt Assumption \\
+2. Liquidator Capital & Required & Required & Required & Pre-deposited & Required & Not Required \\
+3. Cascade Attenuation & None & None & Partial & Yes (pool) & None & Yes (locks)\textsuperscript{$\dagger$} \\
+4. Position Transfer & Supply only & Supply only & No & No & Supply only & Both (inverted) \\
+5. Governance Bounds & None & None & None & Immutable & None & $0.5\times$--$2\times$ \\
+6. Param.\ Transitions & Instant & Instant & Instant & N/A & Instant & Asymptotic \\
+7. Oracle Type & Chainlink & Chainlink & CL+OSM & Chainlink & Uniswap & Log TWAP \\
+8. Capacity Rate-Limit & None & None & None & None & None & $\sqrt{n{+}2}$ scaling \\
+9. Spam Protection & Gas price & Gas price & Gas price & Gas price & Gas price & Gas + PoW \\
+10. Position Caps & None & Isolation & Debt ceil. & Debt ceil. & Borrow caps & Beta-distributed \\
+\bottomrule
+\end{tabular}
+\vspace{0.3em}
+\par\raggedright\scriptsize\textsuperscript{$\dagger$}Attenuation proportional to lock adoption $\phi$; without locks, cascade risk equals traditional protocols.
+\end{table*}
+
+% ==============================================================================
+% 3. Protocol Architecture
+% ==============================================================================
+\section{Protocol Architecture}
+\label{sec:architecture}
+
+The protocol comprises five core contracts, depicted in Figure~\ref{fig:architecture}:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1cm,
+    box/.style={rectangle, draw, minimum width=1.8cm, minimum height=0.7cm, align=center, font=\scriptsize},
+    arrow/.style={->, thick}
+]
+    % Core contracts
+    \node[box, fill=primaryblue!20] (pool) {Pool};
+    \node[box, fill=gray!20, above=0.8cm of pool] (acma) {Acma};
+    \node[box, fill=orange!20, right=0.8cm of pool] (oracle) {Oracle};
+    \node[box, fill=successgreen!20, below left=0.8cm and 0.3cm of pool] (supply) {Supply\\Position};
+    \node[box, fill=warningred!20, below right=0.8cm and 0.3cm of pool] (borrow) {Borrow\\Position};
+    \node[box, fill=yellow!20, below=1.8cm of pool] (vault) {Vault};
+
+    % Arrows
+    \draw[arrow] (acma) -- (pool);
+    \draw[arrow] (pool) -- (oracle);
+    \draw[arrow] (pool) -- (supply);
+    \draw[arrow] (pool) -- (borrow);
+    \draw[arrow] (pool) -- (vault);
+    \draw[arrow] (vault) -- (supply);
+    \draw[arrow] (vault) -- (borrow);
+\end{tikzpicture}
+\caption{XPower Banq contract architecture}
+\label{fig:architecture}
+\end{figure}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Pool}: The main contract, managing supply, borrow, settle, and redeem operations with health checks and liquidation logic.
+
+    \item \textbf{Position}: ERC20~\cite{erc20} tokens representing supply and borrow positions, each with distinct transfer semantics (Section~\ref{subsec:transfer}).
+
+    \item \textbf{Vault}: An ERC4626-compliant~\cite{erc4626} custody contract that tracks deposited assets and utilization.
+
+    \item \textbf{Oracle}: A log-space TWAP aggregator with bidirectional geomean spread computation.
+
+    \item \textbf{Acma}: An access control wrapper around OpenZeppelin's \texttt{AccessManager}~\cite{openzeppelin2020}.
+\end{enumerate}
+
+\begin{definition}[Minimum Token Requirements]
+\label{def:token-constraints}
+$|\mathcal{T}| \geq 2 \land \text{decimals}(T_i) \geq 6$, ensuring sufficient precision for interest calculations and cross-collateralization.
+\end{definition}
+
+% ==============================================================================
+% 4. Core Mechanisms
+% ==============================================================================
+\section{Core Mechanisms}
+\label{sec:mechanisms}
+
+\subsection{Locked Positions and Cascade Attenuation}
+\label{subsec:locked-positions}
+
+\begin{definition}[Position Lock]
+\label{def:position-lock}
+For each user $u$ and position type $p \in \{\text{supply}, \text{borrow}\}$, the protocol maintains $\text{balance}(u,p)$, $\text{lock}(u,p)$, and $\text{liquid}(u,p) = \text{balance} - \text{lock}$. Operations accept a \texttt{lock} flag; when true, supplied assets cannot be redeemed and borrowed amounts cannot be settled. Transfers proportionally move locked amounts:
+\begin{equation}
+\label{eq:lock-transfer}
+\text{transfer}_{\text{lock}}(u_1, u_2, v) = \left\lfloor \frac{\text{lock}(u_1) \cdot v}{\text{balance}(u_1)} \right\rfloor
+\end{equation}
+\end{definition}
+
+\textbf{Irrevocability.} Locks are permanent---there is no unlock mechanism. A user can exit only via transfer (which proportionally moves the lock) or liquidation. Crucially, only the \emph{principal} is locked: accrued interest on locked supply positions can be redeemed at any time, and accrued interest on locked borrow positions can be settled at any time, too. Still, the design creates a fundamental tension: cascade protection depends on widespread adoption, yet rational adoption requires holding periods exceeding 5~years at typical utilization \cite[\S C]{apx}. The protocol addresses this tension by tying APY incentives to utilization levels.
+
+\textbf{Lock Bonus/Malus.} To encourage adoption, locked suppliers earn additional interest $I_{\text{bonus}} = I \cdot \rho_u \cdot r_{\text{bonus}}$, while locked borrowers pay reduced interest $I_{\text{malus}} = I \cdot \rho_u \cdot r_{\text{malus}}$, where $\rho_u = \text{lock}/\text{balance}$ and $r_{\text{bonus}}, r_{\text{malus}} \in [0, s]$. The code enforces $r_{\text{bonus}} \leq s$ and $r_{\text{malus}} \leq s$ independently, where $s$ is the spread parameter. At full lock adoption ($\bar{\rho} = 1$), the combined constraint $r_{\text{bonus}} + r_{\text{malus}} \leq 2s$ holds at the boundary, with protocol margin approaching zero.
+
+\begin{theorem}[Cascade Attenuation]
+\label{thm:cascade}
+In a pool where fraction $\phi$ of supply positions are locked, the maximum cascade amplification factor is bounded by $(1{-}\phi)$. Locked positions attenuate sell pressure by preventing immediate redemption of seized collateral; they do not eliminate cascades among unlocked positions.
+\end{theorem}
+
+Because locked supply tokens cannot be redeemed, liquidation transfers position tokens without underlying assets leaving the vault. Only the unlocked fraction $(1{-}\phi)$ generates sell pressure. A full proof appears in \cite[\S B]{apx}. Simulation confirms that at a 25\% price shock, unlocked positions suffer 85.7\% liquidation versus 29.4\% when fully locked \cite[\S E]{apx}.
+
+\textbf{Liquidation Precedence.} In practice, liquidators prefer unlocked positions for their immediate liquidity, creating \emph{de facto} seniority for locked positions. This ordering is market-driven rather than protocol-enforced.
+
+\subsection{Position Transfer Semantics}
+\label{subsec:transfer}
+
+Supply positions follow standard ERC20 semantics: \texttt{transfer} pushes value to the receiver, and the health check is applied to the sender. Borrow positions, by contrast, implement \emph{inverted} semantics that reflect the nature of debt: \texttt{transfer(from, amount)} \textbf{pulls} debt from the \texttt{from} address, \texttt{transferFrom} requires \emph{dual} approval from both sender and receiver, and the health check falls on the receiver.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw, rounded corners, minimum width=1.4cm, minimum height=0.9cm, align=center, font=\footnotesize},
+    arrow/.style={->, >=stealth, thick},
+    label/.style={font=\scriptsize, align=center}
+]
+\node[box] (caller1) {Caller\\(from)};
+\node[box, right=of caller1] (receiver1) {Receiver\\(to)};
+\draw[>-, >=stealth, thick, successgreen!70] (caller1) -- node[above, label] {\textbf{push supply}} (receiver1);
+\node[below=0.05cm of caller1, font=\scriptsize, warningred!70] {\textbf{health check}};
+
+\node[box, below=1.4cm of caller1] (from2) {From};
+\node[box, right=of from2] (to2) {To};
+\node[box, above=0.6cm of $(from2)!0.5!(to2)$] (caller2) {Caller};
+\draw[arrow, codegray, dashed] (from2) -- node[left, label, xshift=-2pt] {approve} (caller2);
+\draw[>-, >=stealth, thick, successgreen!70] (from2) -- node[above, label] {\textbf{push supply}} (to2);
+\node[below=0.05cm of from2, font=\scriptsize, warningred!70] {\textbf{health check}};
+\end{tikzpicture}
+\caption{Supply position --- standard ERC20 push semantics}
+\label{fig:supply-transfer}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    box/.style={rectangle, draw, rounded corners, minimum width=1.4cm, minimum height=0.9cm, align=center, font=\footnotesize},
+    arrow/.style={->, >=stealth, thick},
+    label/.style={font=\scriptsize, align=center}
+]
+\node[box] (source1) {Source\\(from)};
+\node[box, right=of source1] (caller1) {Caller\\(to)};
+\draw[arrow, warningred!70] (source1) -- node[above, label] {\textbf{pull borrow}} (caller1);
+\node[below=0.05cm of caller1, font=\scriptsize, warningred!70] {\textbf{health check}};
+
+\node[box, below=1.4cm of source1] (from2) {From};
+\node[box, right=of from2] (to2) {To};
+\node[box, above=0.6cm of $(from2)!0.5!(to2)$] (caller2) {Caller};
+\draw[arrow, codegray, dashed] (from2) -- node[left, label, xshift=-2pt] {approve} (caller2);
+\draw[arrow, codegray, dashed] (to2) -- node[right, label, xshift=2pt] {approve} (caller2);
+\draw[arrow, warningred!70] (from2) -- node[above, label] {\textbf{pull borrow}} (to2);
+\node[below=0.05cm of to2, font=\scriptsize, warningred!70] {\textbf{health check}};
+\end{tikzpicture}
+\caption{Borrow position --- inverted pull semantics with dual approval}
+\label{fig:borrow-transfer}
+\end{figure}
+
+\begin{definition}[Debt Transfer]
+\label{def:debt-transfer}
+When debt is transferred from user $A$ to user $B$: (1)~$A$'s borrow position decreases by $d$; (2)~$B$'s borrow position increases by $d$; (3)~$B$ must have sufficient collateral; (4)~both must approve the intermediary (unless self-transfer).
+\end{definition}
+
+\textbf{Rationale.} Debt transfer differs fundamentally from asset transfer: with assets, the receiver benefits; with debt, the sender benefits by losing an obligation. The inverted semantics reflect this distinction---standard ERC20 pushes value to the receiver, whereas borrow positions pull debt from the source. The Pool contract as owner bypasses approvals (and health checks) to enable liquidations.
+
+\subsection{Lethargic Governance}
+\label{subsec:lethargic-governance}
+
+\begin{definition}[Parameter Transition]
+\label{def:param-transition}
+A parameter $\theta$ transitions from $\theta_0$ to $\theta_1$ subject to $0.5 \cdot \theta_0 \leq \theta_1 \leq 2 \cdot \theta_0$. The effective value follows the time-weighted mean:
+\begin{equation}
+\bar{\theta}(t) = \theta_1 - \frac{(\theta_1 - \theta_0)(t_s - t_0)}{t - t_0}
+\end{equation}
+which asymptotically approaches $\theta_1$ as $t \to \infty$.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\columnwidth,
+    height=5cm,
+    xlabel={Time},
+    ylabel={Parameter Value},
+    xmin=0, xmax=10,
+    ymin=0.95, ymax=1.25,
+    xtick={0,2,10},
+    xticklabels={$t_0$,$t_s$,$\infty$},
+    ytick={1.0,1.1,1.2},
+    yticklabels={$\theta_0$,,\ $\theta_1$},
+    grid=major,
+    legend pos=south east,
+]
+\addplot[thick, primaryblue!70, domain=0:2, forget plot] {1.0};
+\addplot[thick, primaryblue!70, domain=2:10, samples=50] {1.2 - 0.4/x};
+\addplot[thick, dashed, warningred!70, domain=0:10] {1.0};
+\addplot[thick, dashed, successgreen!70, domain=2:10] {1.2};
+\addplot[only marks, mark=*, mark size=2pt, primaryblue!70, forget plot] coordinates {(2,1.0)};
+\legend{Actual, Source, Target}
+\end{axis}
+\end{tikzpicture}
+\caption{Lethargic parameter transition (asymptotic)}
+\label{fig:lethargic-transition}
+\end{figure}
+
+\textbf{Safety Constraints.} Each single change is bounded to at most $2\times$, overlapping transitions are disallowed, and changes are rate-limited to once per governance period (monthly). Mandatory initial lock periods ranging from 3~months to 1~year (by category) prevent manipulation at deployment. Full parameter tables are provided in Appendix~\ref{apx:parameters}.
+
+\subsection{Beta-Distributed Position Caps}
+\label{subsec:beta-caps}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\columnwidth,
+    height=5cm,
+    xlabel={$\lambda = B/S$ (Position Fraction)},
+    ylabel={Beta Multiplier},
+    xmin=0, xmax=1,
+    ymin=0, ymax=1.8,
+    xtick={0,0.33,0.5,1.0},
+    xticklabels={0,1/3,1/2,1},
+    grid=major,
+    legend pos=north east,
+]
+\addplot[thick, primaryblue!70, domain=0.01:0.99, samples=100] {12*x*(1-x)^2};
+\addplot[thick, dashed, warningred!70] coordinates {(0.333,0) (0.333,1.6)};
+\addplot[only marks, mark=*, mark size=2pt, primaryblue!70, forget plot] coordinates {(0.333,1.778)};
+\node at (axis cs:0.75,1.65) [anchor=center, font=\small] {Peak at $\lambda=1/3$};
+\end{axis}
+\end{tikzpicture}
+\caption{Beta distribution cap function \mbox{$12\lambda(1{-}\lambda)^2$}}
+\label{fig:beta-distribution}
+\end{figure}
+
+\begin{definition}[Position Cap Function]
+\label{def:cap}
+For balance $B$, supply $S$, and $n$ large holders ($\geq 1$ token unit):
+\begin{equation}
+\label{eq:beta-cap}
+\text{cap}(B, S, n) = \frac{C_{\max} \cdot 12\lambda(1{-}\lambda)^2}{\sqrt{n + 2}}
+\end{equation}
+where $\lambda = B/S$ and $C_{\max}$ is the maximum \emph{relative} cap.
+\end{definition}
+
+The offset~$+2$ prevents degeneracy at low holder counts. In addition, governance sets a holder floor $n_{\min}$ via the \texttt{MIN\_HOLDERS} parameter; the effective count is $\max(n, n_{\min})$, which tightens per-user caps during the cold-start phase when few holders have joined. When $\lambda = 0$ (a new user with no existing balance), the beta factor is bypassed and the cap reduces to $C_{\max}/\sqrt{n{+}2}$, ensuring a non-zero entry allocation.
+
+The Beta(2,3) shape is a design choice, not a uniquely optimal distribution---any unimodal density vanishing at 0 and 1 achieves similar goals. We chose Beta(2,3) for its mode at $\lambda = 1/3$ (favoring medium positions) and analytic tractability. A simpler $4\lambda(1{-}\lambda)$ (Beta(2,2)) or $\lambda(1{-}\lambda)$ would also penalize extremes; the asymmetry toward smaller positions is a preference, not a theoretical necessity.
+
+\textbf{Rate-Limiting, Not Sybil Prevention.} The $\sqrt{n{+}2}$ divisor bounds the \emph{accumulation rate}: $k$ accounts yield $O(\sqrt{k})$ total capacity gain per iteration. This does not, however, penalize long-term equilibrium share---simulation shows that a Sybil attacker retains 48.6\% share (versus 50\% initial) after 60~weeks, a marginal 1.4\% penalty. The mechanism thus prevents rapid capacity monopolization while accepting that patient attackers with sufficient capital can reach similar long-term positions. Combined with a 7~iterations/week cap, capacity growth remains bounded regardless of account splitting. See \cite[\S D]{apx} for detailed simulations.
+
+\subsection{Health Factor and Liquidation}
+\label{subsec:health-liquidation}
+
+\begin{definition}[Health Factor]
+\label{def:health}
+For user $u$ with supply values $V_s^i$ and borrow values $V_b^i$ across $n$ tokens:
+\begin{equation}
+\label{eq:health}
+H(u) = \frac{\sum_i w_s^i \cdot V_s^i}{\sum_i w_b^i \cdot V_b^i}
+\end{equation}
+where $w_s^i, w_b^i \in [0, 255]$ are uint8 weights. The implementation divides each weighted value by $\texttt{WEIGHT\_MAX} = 255$ and averages across tokens; both normalizations cancel in the ratio.
+\end{definition}
+
+With the default weights $w_s = 85$ and $w_b = 255$, the effective LTV is $85/255 \approx 33\%$. This is standard over-collateralization---the same mechanism underlying Compound's and Aave's LTV parameters, expressed through weight ratios rather than an explicit LTV setting. The resulting implicit liquidation bonus $\beta = w_b/w_s - 1 \approx 200\%$ incentivizes liquidators.
+
+\textbf{Hybrid Liquidation.} The protocol supports both centralized keepers (the default, via \texttt{square()}) and governance-enabled public liquidators (PoW-gated, via \texttt{liquidate()}). Both paths use a \emph{debt assumption} model in which the liquidator assumes fraction $2^{-e}$ of the victim's positions. For a given exponent $e$, both supply tokens $s = \text{supply}(V) \gg e$ and debt $d = \text{borrow}(V) \gg e$ transfer atomically. No liquid capital is required---only sufficient collateral headroom. The liquidator's health is verified post-liquidation.
+
+\subsection{Oracle TWAP}
+\label{subsec:oracle-twap}
+
+The oracle aggregates prices via a log-space exponential moving average (EMA). Each refresh queries the AMM in both directions (source$\to$target and target$\to$source) and computes a bidirectional geomean spread, which eliminates directional bias in asymmetric pools:
+\begin{align}
+\overline{m}_t &= \alpha \cdot \overline{m}_{t-1} + (1{-}\alpha) \cdot \log_2(\bar{p}_t) \\
+\overline{r}_t &= \alpha \cdot \overline{r}_{t-1} + (1{-}\alpha) \cdot r_t
+\end{align}
+where $r_t = \frac{1}{2}(\log_2(1+s^{AB}_t) + \log_2(1+s^{BA}_t))$. Smoothing in $\log_2$ space produces geometric mean temporal averaging (as in Uniswap~V3~\cite{uniswap2021}). With $\alpha = 0.944$ (12-period half-life) and hourly refreshes, approximately 40~hours of sustained manipulation achieves 90\% price deviation.
+
+\textbf{Spread Scaling.} Large positions incur wider spreads via $\mu = \log_2(2x + 2)$ where $x = n \cdot s$, reflecting market impact without requiring per-pair parameters. The base spread itself serves as sensitivity control: liquid pairs scale slowly, while illiquid pairs scale quickly.
+
+\textbf{Bad-Debt Risk from Stale Pricing.} The slow convergence is double-edged. After a genuine $2\times$ price move, only 22.5\% is absorbed after 14~hours. Combined with the 1-hour refresh limit, the protocol can be 2+ hours blind during a crash. If collateral drops 50\%, the oracle reports near pre-crash prices for hours, potentially delaying liquidations and allowing bad debt to accumulate. The 200\% over-collateralization buffer provides margin; Monte Carlo simulation and analytical bounds confirm zero bad debt at the default 33\% LTV for crashes up to 50\%, with bad debt emerging only at LTV $\geq 67\%$. See \cite[\S F]{apx} for TWAP simulations and \cite[\S G]{apx} for quantitative bad-debt risk bounds.
+
+\subsection{Interest Rates}
+\label{subsec:interest-rates}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\columnwidth,
+    height=5.5cm,
+    xlabel={Utilization $U$},
+    ylabel={Interest Rate $R$},
+    xmin=0, xmax=1,
+    ymin=0, ymax=1.1,
+    xtick={0,0.9,1.0},
+    xticklabels={0,$U^*$,1},
+    ytick={0,0.1,0.5,1.0},
+    yticklabels={0,$R^*$,0.5,1},
+    grid=major,
+    legend pos=north west,
+]
+\addplot[thick, primaryblue!70, domain=0:0.9, forget plot] {x/9};
+\addplot[thick, primaryblue!70, domain=0.9:1.0, forget plot] {9*x - 8};
+\addplot[thick, dashed, gray!50, forget plot] coordinates {(0.9,0) (0.9,0.1)};
+\addplot[only marks, mark=*, primaryblue!70] coordinates {(0.9,0.1)};
+\addlegendentry{Kink point}
+\node at (axis cs:0.45,0.05) [anchor=south, font=\small, rotate=4] {Linear};
+\node at (axis cs:0.92,0.55) [anchor=center, font=\small, rotate=83] {Steep};
+\end{axis}
+\end{tikzpicture}
+\caption{Piecewise-linear interest rate curve}
+\label{fig:interest-curve}
+\end{figure}
+
+\begin{definition}[Interest Rate Model]
+\label{def:irm}
+For utilization $U$, optimal utilization $U^*$, and optimal rate $R^*$:
+\begin{equation}
+\label{eq:interest-rate}
+R(U) = \begin{cases}
+U \cdot R^* / U^* & \text{if } U \leq U^* \\[4pt]
+[U(1{-}R^*) - (U^* - R^*)] / (1{-}U^*) & \text{otherwise}
+\end{cases}
+\end{equation}
+\end{definition}
+
+The protocol maintains a symmetric spread: $R_{\text{borrow}} = R_{\text{base}} \cdot (1{+}s)$, $R_{\text{supply}} = R_{\text{base}} \cdot (1{-}s)$, generating $2s$ margin on interest flows. See \cite[\S A]{apx} for mathematical foundations including interest accrual and time-weighted integration.
+
+% ==============================================================================
+% 5. Anti-Spam Protection
+% ==============================================================================
+\section{Anti-Spam Protection}
+\label{sec:antispam}
+
+When governance enables public operations---such as liquidation via \texttt{liquidate()} or oracle refresh via \texttt{refresh()}---proof-of-work gates prevent spam. The PoW requires:
+\begin{equation}
+\text{zeros}\bigl(\text{keccak256}(\text{blockHash} \| \text{tx.origin} \| \text{msg.data})\bigr) \geq d
+\end{equation}
+where each difficulty level requires $16\times$ more computational work. Combined with token-bucket rate limiting (capacity $C$, regeneration 1/second), this prevents mempool flooding and block stuffing. By default, operations are restricted to authorized keepers; PoW only applies in governance-enabled public mode.
+
+\textbf{Fairness Limitations.} PoW shifts the advantage from capital (gas wars) to computation. Professional miners achieve 10--20$\times$ higher hash rates than browser-based implementations, and on PoS chains (e.g., Avalanche) validators who know they will propose a block can pre-compute favorable nonces, creating a validator-advantage vector. In short, PoW provides anti-spam friction rather than fair access---it changes the extraction mechanism from capital to computation without eliminating it.
+
+% ==============================================================================
+% 6. Governance and Parameters
+% ==============================================================================
+\section{Governance and Parameters}
+\label{sec:governance}
+
+All protocol parameters are governed via the lethargic transition mechanism (Definition~\ref{def:param-transition}). They are organized into four contract domains: Pool (rate limits, PoW difficulty, health weights), Position (interest rate model, caps), Oracle (TWAP behavior, feed management), and Vault (entry/exit fees). Full parameter tables and role categories appear in Appendix~\ref{apx:parameters}.
+
+\begin{theorem}[Governance Rate Bound]
+\label{thm:governance}
+Under multiplicative bound $\mu = 2$ and minimum cycle $\Delta t_{\min}$, the parameter at time $t$ satisfies:
+\begin{equation}
+\mu^{-n} \theta_0 \leq \theta(t) \leq \mu^n \theta_0
+\end{equation}
+where $n = \lfloor(t{-}t_0)/\Delta t_{\min}\rfloor$. A $10\times$ change requires $\lceil\log_2 10\rceil = 4$ months.
+\end{theorem}
+
+The protocol implements a three-tier role hierarchy per governable function: an executor (who calls the function), an admin (who grants and revokes the executor role), and a guard (who provides veto-only revocation). Guard roles serve as a ``break glass'' mechanism, allowing emergency halts of malicious actions without granting execution power. The governance rate bound proof is provided in \cite[\S B]{apx}.
+
+% ==============================================================================
+% 7. Security Analysis
+% ==============================================================================
+\section{Security Analysis}
+\label{sec:security}
+
+\subsection{Adversary Model}
+
+We consider an adversary $\mathcal{A}$ who controls capital $K$, hash rate $H$, arbitrarily many accounts, governance access with probability $p_g$, and same-block front-running capability. We assume that $\mathcal{A}$ cannot break cryptographic primitives or control more than 50\% of consensus.
+
+\subsection{Core Security Properties}
+
+\textbf{Cascade Attenuation (Theorem~\ref{thm:cascade}).} Because locked supply positions cannot be redeemed, cascade sell pressure is bounded to $(1{-}\phi)$ of the unlocked pool. This attenuates---but does not prevent---cascades. Simulation confirms that at a 25\% price shock, unlocked positions suffer 85.7\% liquidation versus 29.4\% when fully locked (Section~\ref{sec:evaluation}).
+
+\textbf{Rate-Limited Accumulation.} The $\sqrt{n{+}2}$ divisor bounds per-iteration capacity gain sublinearly. Combined with 7~iterations/week, reaching 99\% capacity requires approximately $850\sqrt{n/100}$ iterations. This constitutes rate-limiting rather than Sybil prevention: the long-term share distribution is ultimately determined by initial capital \cite[\S D]{apx}.
+
+\textbf{Governance Rate Bound (Theorem~\ref{thm:governance}).} Catastrophic parameter changes require 6+ months of sustained malicious governance, providing ample time for detection and response.
+
+\textbf{Solvency.} The code enforces $r_{\text{bonus}} \leq s$ and $r_{\text{malus}} \leq s$ independently per parameter. At full lock adoption, the combined constraint $r_{\text{bonus}} + r_{\text{malus}} \leq 2s$ holds at the boundary, with margin approaching zero. The aggregate solvency formula ($r_{\text{bonus}} \cdot \bar{\rho}^S + r_{\text{malus}} \cdot \bar{\rho}^B \leq 2s$) is a sufficient condition that is not directly enforced on-chain; the per-parameter bounds serve as the operative constraints.
+
+\subsection{Risk Assessment}
+
+\begin{table}[htbp]
+\centering
+\caption{Risk severity assessment}
+\label{tab:risks}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l >{\centering\arraybackslash}X >{\centering\arraybackslash}X@{}}
+\toprule
+Risk Category & Likelihood & Impact \\
+\midrule
+Oracle Manipulation & Medium & High \\
+Governance Attack & Low & High \\
+Liquidation Cascade\textsuperscript{$\dagger$} & Medium & High \\
+Smart Contract Bug & Medium & Critical \\
+Keeper Centralization & Medium & High \\
+Bad Debt (Extreme Vol.) & Low & Critical \\
+Lock Mechanism Abuse & Low & Medium \\
+PoW Resource Advantage & Medium & Low \\
+Oracle Staleness & Medium & Medium \\
+\bottomrule
+\end{tabularx}
+\vspace{0.5em}
+\par\raggedright\scriptsize\textsuperscript{$\dagger$}Impact conditional on lock adoption; without locks, impact is High.
+\end{table}
+
+\textbf{Oracle.} The log-space TWAP with $\alpha = 0.944$ requires approximately 40~hours of sustained manipulation to achieve 90\% deviation, and flash loans are ineffective due to the two-tick immunity window. However, the 2+~hour blindness during genuine crashes creates bad-debt risk (Section~\ref{subsec:oracle-twap}).
+
+\textbf{Governance.} Parameter changes are bounded by $0.5\times$--$2\times$ per cycle, and guard roles enable emergency revocation. Nevertheless, an attacker who sustains control for 6+~months can achieve significant cumulative drift.
+
+\textbf{Smart Contracts.} The implementation uses reentrancy protection via \texttt{ReentrancyGuardTransient}, Solidity 0.8+ overflow checks, and OpenZeppelin access control. No formal verification has been performed (Section~\ref{sec:limitations}).
+
+Full proofs of the above properties are provided in \cite[\S B]{apx}.
+
+% ==============================================================================
+% 8. Evaluation
+% ==============================================================================
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{Agent-Based Cascade Simulation}
+
+We simulate 1,000 borrowers with log-normal positions, health factors $H \sim \mathcal{N}(1.5, 0.3)$ truncated at $[1.0, 3.0]$, and linear price impact $\Delta p = k \cdot V_{\text{sold}}$ with $k = 1.5 \times 10^{-4}$ (pool ${\sim}25\%$ of market depth).
+
+\begin{table}[htbp]
+\centering
+\caption{Cascade simulation --- positions liquidated (\%), $k = 1.5 \times 10^{-4}$}
+\label{tab:cascade-sim}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Lock $\phi$ & 10\% & 15\% & 20\% & 25\% & 30\% \\
+\midrule
+  0\% & 8.6 & 19.8 & 36.5 & 85.7 & 99.1 \\
+ 25\% & 8.2 & 16.5 & 30.6 & 55.8 & 84.9 \\
+ 50\% & 7.8 & 14.4 & 26.7 & 37.1 & 61.2 \\
+ 75\% & 7.8 & 13.5 & 22.4 & 33.3 & 47.9 \\
+100\% & 7.4 & 12.7 & 19.8 & 29.4 & 38.6 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\columnwidth,
+    height=5.5cm,
+    xlabel={Price Drop (\%)},
+    ylabel={Positions Liquidated (\%)},
+    xmin=10, xmax=30,
+    ymin=0, ymax=100,
+    xtick={10,15,20,25,30},
+    grid=major,
+    legend pos=north west,
+    legend style={font=\scriptsize},
+    legend cell align=right,
+]
+\addplot[thick, warningred!70, mark=*] coordinates {(10,8.6) (15,19.8) (20,36.5) (25,85.7) (30,99.1)};
+\addplot[thick, orange!80, mark=square*] coordinates {(10,8.2) (15,16.5) (20,30.6) (25,55.8) (30,84.9)};
+\addplot[thick, yellow!90!orange, mark=triangle*] coordinates {(10,7.8) (15,14.4) (20,26.7) (25,37.1) (30,61.2)};
+\addplot[thick, successgreen!70, mark=diamond*] coordinates {(10,7.8) (15,13.5) (20,22.4) (25,33.3) (30,47.9)};
+\addplot[thick, primaryblue!70, mark=pentagon*] coordinates {(10,7.4) (15,12.7) (20,19.8) (25,29.4) (30,38.6)};
+\legend{$\phi=0\%$, $\phi=25\%$, $\phi=50\%$, $\phi=75\%$, $\phi=100\%$}
+\end{axis}
+\end{tikzpicture}
+\caption{Cascade depth vs.\ price drop for varying lock fractions}
+\label{fig:cascade-sim}
+\end{figure}
+
+\textbf{Simulation Limitations.} The simulation uses 1,000 agents, which is too few for high statistical confidence. Health factor distributions are assumed rather than calibrated against real DeFi data. The linear price impact model~\cite{kyle1985continuous} is a first-order approximation; real order books exhibit concave impact. No confidence intervals or sensitivity analysis on $k$ are provided, and historical stress events are discussed narratively but not backtested. Implementation details appear in \cite[\S E]{apx}.
+
+\subsection{Gas Cost Analysis}
+
+\begin{table}[htbp]
+\centering
+\caption{Cross-protocol gas comparison, warm interactions (kgas)}
+\label{tab:gas-comparison}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}X rrrrr@{}}
+\toprule
+\shortstack[l]{\vphantom{Xp}Operation\\\vphantom{Xp}} & \shortstack[r]{\vphantom{Xp}Morpho\\\vphantom{Xp}Blue} & \shortstack[r]{\vphantom{Xp}Comp.\\\vphantom{Xp}V2} & \shortstack[r]{\vphantom{Xp}Aave\\\vphantom{Xp}V3} & \shortstack[r]{\vphantom{Xp}Aave\\\vphantom{Xp}V4} & \shortstack[r]{\vphantom{Xp}XPower\\\vphantom{Xp}Banq} \\
+\midrule
+Supply & 90k & 93k & 160k & 107k & 235k \\
+Borrow & 130k & 200k & 320k & 205k & 336k \\
+Settle & 91k & 112k & 180k & 120k & 161k \\
+Redeem & 138k & 150k & 175k & 129k & 306k \\
+Liquidate & --- & 285k & 450k & 345k & 648k \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+XPower Banq's gas costs are 1.8--2.6$\times$ those of Morpho Blue and 1.3--2.4$\times$ those of Aave V4. This comparison should be interpreted carefully: Morpho Blue achieves low costs through a minimalist singleton (approximately 550 lines) that delegates oracle validation, position caps, and risk management to external curators---an architectural trade-off with documented consequences (e.g., a 2024 oracle misconfiguration exploit). Euler~V2 and Liquity~V2, which are closer architectural comparators, were not available for inclusion. On Avalanche (approximately 1.55~gwei, AVAX~$<$\$10), all operations cost under 1~cent~USD.
+
+% ==============================================================================
+% 9. Limitations and Future Work
+% ==============================================================================
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+\textbf{Capital Efficiency.} The default 33\% LTV requires \$3 of collateral per \$1 borrowed, which is 2.3$\times$ worse than Compound's 75\% and 2.8$\times$ worse than Aave V3 E-Mode (93\%). Although configurable via lethargic governance, reaching 75\% LTV from 33\% requires 2~governance cycles (a minimum of 2~months), during which the protocol remains uncompetitive for price-sensitive borrowers. No analysis is provided of what LTV range the target market (XPower tokens on Avalanche) actually requires.
+
+\textbf{Formal Verification.} The smart contracts have not undergone formal verification. Given the 10~interacting mechanisms---where locks affect caps, which affect health, which affects liquidation---this represents a significant gap that undermines the security analysis. Formal proofs of health factor correctness, position token conservation, and interest accrual monotonicity are absent. This is the highest-priority future work, recommended via Certora, Halmos, or the K~framework.
+
+\textbf{Composability Risks.} Wrapped positions (WPosition) interact with external DeFi protocols, yet no analysis addresses how inverted borrow semantics or irrevocable locks behave under composition. External contracts that expect standard ERC20 semantics may mishandle borrow positions.
+
+\textbf{Missing Game-Theoretic Analysis.} No model addresses competitive liquidator dynamics under PoW constraints, equilibrium liquidation profit, or oracle sandwich attack quantification. While PoW raises the cost of sandwich attacks, it does not eliminate them.
+
+\textbf{Future Directions.} Areas for further development include dynamic parameter adjustment based on market conditions, cross-chain lending via message passing, privacy-preserving positions via zero-knowledge proofs, and integration of additional oracle sources for off-chain price anchoring.
+
+% ==============================================================================
+% 10. Conclusion
+% ==============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+XPower Banq presents a DeFi lending protocol that prioritizes stability over yield optimization. Its strongest contributions are lethargic governance---a genuine innovation with formal rate bounds---and the log-space geometric-mean TWAP oracle, which is both novel and empirically validated. The locked position mechanism provides cascade attenuation proportional to adoption, though its effectiveness depends on rational adoption dynamics that remain uncertain \cite[\S C]{apx}. The beta-distributed cap function rate-limits capacity accumulation but does not prevent long-term Sybil advantage. The conservative default LTV of 33\% protects solvency at the cost of capital efficiency, and is adjustable via governance. Formal verification and game-theoretic liquidation modeling remain the most significant gaps for future work.
+
+% ==============================================================================
+% References
+% ==============================================================================
+% ==============================================================================
+% Appendices
+% ==============================================================================
+\appendix
+
+\section{Protocol Parameters}
+\label{apx:parameters}
+
+\subsection{Pool Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Pool parameters. Time units: s=second, d=day, w=week, m=month, y=year.}
+\label{tab:pool-params}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l l@{\,}c@{\,}r X@{}}
+\toprule
+Parameter & \multicolumn{3}{c}{Setting} & Description \\
+\midrule
+\texttt{MAX\_SUPPLY} & 1w & $\in$ & [1s, 1y] & Max supply rate-limit \\
+\texttt{MIN\_SUPPLY} & 1d & $\in$ & [1s, 1y] & Min supply rate-limit \\
+\texttt{POW\_SUPPLY} & 0 & $\in$ & [0, 64] & Supply PoW difficulty \\
+\texttt{MAX\_BORROW} & 1w & $\in$ & [1s, 1y] & Max borrow rate-limit \\
+\texttt{MIN\_BORROW} & 1d & $\in$ & [1s, 1y] & Min borrow rate-limit \\
+\texttt{POW\_BORROW} & 0 & $\in$ & [0, 64] & Borrow PoW difficulty \\
+\texttt{POW\_SQUARE} & 0 & $\in$ & [0, 64] & Liquid. PoW difficulty \\
+\texttt{WEIGHT\_SUPPLY} & 85 & $\in$ & [0, 255] & Supply health weight \\
+\texttt{WEIGHT\_BORROW} & 255 & $\in$ & [0, 255] & Borrow health weight \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Position Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Position parameters}
+\label{tab:position-params}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l l@{\,}c@{\,}r X@{}}
+\toprule
+Parameter & \multicolumn{3}{c}{Setting} & Description \\
+\midrule
+\texttt{UTIL} & 90\% & $\in$ & [0, 100\%] & Optimal utilization \\
+\texttt{RATE} & 10\% & $\in$ & [0, 100\%] & Rate at kink \\
+\texttt{SPREAD} & 10\% & $\in$ & [0, 50\%] & Rate half-spread \\
+\texttt{LOCK\_BONUS} & 10\% & $\in$ & [0, \texttt{SPREAD}] & Locked supply APY bonus \\
+\texttt{LOCK\_MALUS} & 10\% & $\in$ & [0, \texttt{SPREAD}] & Locked borrow APY reduction \\
+\texttt{CAP} & --- & $\in$ & [0, $2^{224}$] & Position cap \\
+\texttt{MIN\_HOLDERS} & --- & $\in$ & [0, $10^{18}$] & Min large holders \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Oracle Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Oracle parameters}
+\label{tab:oracle-params}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l l@{\,}c@{\,}r X@{}}
+\toprule
+Parameter & \multicolumn{3}{c}{Setting} & Description \\
+\midrule
+\texttt{DECAY} & 0.944 & $\in$ & [0.5, 1.0] & EMA decay \\
+\texttt{LIMIT} & 1h & $\in$ & [1s, 1d] & Min refresh interval \\
+\texttt{LEVEL} & 0 & $\in$ & [0, 64] & Refresh PoW difficulty \\
+\texttt{DELAY} & 14d & $\in$ & [1w, 3m] & Feed enlist timelock \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Vault Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Vault parameters}
+\label{tab:vault-params}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l l@{\,}c@{\,}r X@{}}
+\toprule
+Parameter & \multicolumn{3}{c}{Setting} & Description \\
+\midrule
+\texttt{FEE\_ENTRY} & 0.1\% & $\in$ & [0, 50\%] & Deposit fee \\
+\texttt{FEE\_EXIT} & 1.0\% & $\in$ & [0, 50\%] & Withdrawal fee \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Change Rate Constraints}
+
+\begin{table}[H]
+\centering
+\caption{Initial lock periods of parameters}
+\label{tab:transition-durations}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Category & Lock Period \\
+\midrule
+Interest rate model & 3m \\
+Oracle TWAP settings & 3m \\
+Oracle feed delay & 1y \\
+Vault fees & 3m \\
+Pool weights & 3m \\
+Pool rate limits & 1y \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Maximum parameter change over time}
+\label{tab:max-change}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\centering\arraybackslash}X r r@{}}
+\toprule
+Cycles & Max Increase & Max Decrease \\
+\midrule
+1 & $2\times$ & $0.5\times$ \\
+2 & $4\times$ & $0.25\times$ \\
+3 & $8\times$ & $0.125\times$ \\
+6 & $64\times$ & $0.016\times$ \\
+12 & $4096\times$ & $0.00024\times$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Role-Based Access Control}
+
+The protocol implements a three-tier role hierarchy per governable function: executor (calls the restricted function), admin (grants/revokes the executor role), and guard (veto-only revocation).
+
+\textbf{Governance Attack Precautions.} Delayed feed changes require up to 3~months. Guard role separation prevents escalation. Gradual parameter migration eliminates arbitrage from sudden changes. Bounded cumulative change creates predictable worst-case scenarios. Immutable constraints include minimum decimals $\geq 6$, minimum 2~tokens, a fixed token list, and non-upgradeable contracts.
+
+\section{Protocol Constants}
+\label{apx:constants}
+
+The following tables list all compile-time constants defined in the protocol's \texttt{Constant.sol} library.
+
+\begin{table}[H]
+\centering
+\caption{Time unit constants (in seconds)}
+\label{tab:time-constants}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l r X@{}}
+\toprule
+Constant & Value & Definition \\
+\midrule
+\texttt{CENTURY} & 3,155,760,000 & $365.25 \times 100 \times 86400$ \\
+\texttt{YEAR} & 31,557,600 & $365.25 \times 86400$ \\
+\texttt{MONTH} & 2,629,800 & YEAR / 12 \\
+\texttt{WEEK} & 604,800 & $7 \times 86400$ \\
+\texttt{DAY} & 86,400 & $24 \times 3600$ \\
+\texttt{HOUR} & 3,600 & $60 \times 60$ \\
+\texttt{MINUTE} & 60 & 60 seconds \\
+\texttt{SECOND} & 1 & 1 second \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Fixed-point representation constants}
+\label{tab:fixedpoint-constants}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l r X@{}}
+\toprule
+Constant & Value & Meaning \\
+\midrule
+\texttt{RAY} & $10^{27}$ & Ray precision (27 decimals) \\
+\texttt{ONE} & $10^{18}$ & WAD unit (1.0) \\
+\texttt{TWO} & $2 \times 10^{18}$ & WAD unit (2.0) \\
+\texttt{HLF} & $0.5 \times 10^{18}$ & WAD unit (0.5) \\
+\texttt{NIL} & 0 & WAD unit (0.0) \\
+\texttt{PCT} & $10^{16}$ & 1 percentage point \\
+\texttt{BPS} & $10^{14}$ & 1 basis point \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Protocol constraints and limits}
+\label{tab:constraint-constants}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l r X@{}}
+\toprule
+Constant & Value & Purpose \\
+\midrule
+\texttt{MAX\_DIFFICULTY} & 64 & Max PoW difficulty \\
+\texttt{MIN\_HOLDERS} & $10^{18}$ & Min holders upper bound \\
+\texttt{VERSION} & 0x1a5 & Protocol version \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{EMA Decay Factors}
+\label{apx:decay}
+
+Table~\ref{tab:decay} lists pre-computed EMA decay factors relating half-life (in refresh periods) to the decay coefficient $\alpha$, used for log-space TWAP oracle smoothing.
+
+\begin{table}[H]
+\centering
+\caption{Pre-computed EMA decay factors}
+\label{tab:decay}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\centering\arraybackslash}X >{\raggedleft\arraybackslash}X >{\centering\arraybackslash}X@{}}
+\toprule
+Half-life & Decay $\alpha$ & Use Case \\
+\midrule
+1 & 0.500000 & Fast response \\
+2 & 0.707107 & Short-term \\
+12 & 0.943874 & Medium-term \\
+24 & 0.971532 & Long-term \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{thebibliography}{99}
+
+% === Cited references, in first-citation order ===
+
+% §1 Introduction (line 132)
+\bibitem{compound2019}
+Leshner, R. and Hayes, G.
+\newblock Compound: The Money Market Protocol.
+\newblock \emph{Compound Whitepaper}, 2019.
+\newblock \url{https://compound.finance/documents/Compound.Whitepaper.pdf}
+
+\bibitem{aave2020}
+Aave Protocol.
+\newblock Aave Protocol Whitepaper V2.0.
+\newblock \emph{Aave Documentation}, 2020.
+\newblock \url{https://docs.aave.com/}
+
+\bibitem{makerdao2017}
+MakerDAO Team.
+\newblock The Maker Protocol: MakerDAO's Multi-Collateral Dai (MCD) System.
+\newblock \emph{MakerDAO Whitepaper}, 2017.
+\newblock \url{https://makerdao.com/whitepaper/}
+
+\bibitem{bartoletti2021}
+Bartoletti, M., Chiang, J.H., and Lafuente, A.L.
+\newblock SoK: Lending Pools in Decentralized Finance.
+\newblock \emph{Financial Cryptography and Data Security (FC)}, LNCS vol.~12676, pp.~553--578, 2021.
+
+\bibitem{mackinga2022}
+Mackinga, T., Nadahalli, T., and Wattenhofer, R.
+\newblock TWAP Oracle Attacks: Easier Done than Said?
+\newblock \emph{IEEE International Conference on Blockchain and Cryptocurrency}, 2022.
+
+\bibitem{beanstalk2022}
+Immunefi.
+\newblock Hack Analysis: Beanstalk Governance Attack, April 2022.
+\newblock \emph{Security Report}, 2022.
+\newblock \url{https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e}
+
+\bibitem{gudgeon2020}
+Gudgeon, L., Perez, D., Harz, D., Livshits, B., and Gervais, A.
+\newblock The Decentralized Financial Crisis.
+\newblock \emph{Crypto Valley Conference}, 2020.
+
+% §2 Related Work — Lending (line 156)
+\bibitem{euler2022}
+Euler Labs.
+\newblock Euler Finance: Permissionless Lending Protocol.
+\newblock \emph{Euler Whitepaper}, 2022.
+\newblock \url{https://docs.euler.finance/}
+
+\bibitem{liquity2021}
+Lauko, R. and Pardoe, R.
+\newblock Liquity: Decentralized Borrowing Protocol.
+\newblock \emph{Liquity Whitepaper}, 2021.
+\newblock \url{https://docs.liquity.org/}
+
+\bibitem{morpho2022}
+Frambot, P. and Gontier Delaunay, M.
+\newblock Morpho Optimizer: Optimizing Decentralized Liquidity Protocols.
+\newblock \emph{Morpho Whitepaper}, 2022.
+\newblock \url{https://whitepaper.morpho.org/}
+
+% §2 Related Work — Liquidation and MEV (line 158)
+\bibitem{perez2021}
+Perez, D., Werner, S.M., Xu, J., and Livshits, B.
+\newblock Liquidations: DeFi on a Knife-edge.
+\newblock \emph{Financial Cryptography and Data Security}, 2021.
+
+\bibitem{daian2020}
+Daian, P., Goldfeder, S., Kell, T., Li, Y., Zhao, X., Bentov, I., Breidenbach, L., and Juels, A.
+\newblock Flash Boys 2.0: Frontrunning in Decentralized Exchanges, Miner Extractable Value, and Consensus Instability.
+\newblock \emph{IEEE Symposium on Security and Privacy (S\&P)}, pp.~910--927, 2020.
+
+\bibitem{qin2022}
+Qin, K., Zhou, L., and Gervais, A.
+\newblock Quantifying Blockchain Extractable Value: How dark is the forest?
+\newblock \emph{IEEE Symposium on Security and Privacy (S\&P)}, pp.~198--214, 2022.
+
+% §2 Related Work — Oracles (line 160)
+\bibitem{chainlink2017}
+Ellis, S., Juels, A., and Nazarov, S.
+\newblock ChainLink: A Decentralized Oracle Network.
+\newblock \emph{Chainlink Whitepaper}, 2017.
+\newblock \url{https://chain.link/whitepaper}
+
+\bibitem{werner2022}
+Werner, S.M., Perez, D., Gudgeon, L., Klages-Mundt, A., Harz, D., and Knottenbelt, W.J.
+\newblock SoK: Decentralized Finance (DeFi).
+\newblock \emph{ACM Computing Surveys}, 2022.
+
+\bibitem{uniswap2021}
+Adams, H., Zinsmeister, N., Salem, M., Keefer, R., and Robinson, D.
+\newblock Uniswap v3 Core.
+\newblock \emph{Uniswap Documentation}, 2021.
+\newblock \url{https://docs.uniswap.org/}
+
+\bibitem{angeris2020}
+Angeris, G. and Chitra, T.
+\newblock Improved Price Oracles: Constant Function Market Makers.
+\newblock \emph{ACM Conference on Advances in Financial Technologies (AFT)}, 2020.
+
+% §2 Related Work — Governance (line 162)
+\bibitem{openzeppelin2020}
+OpenZeppelin Team.
+\newblock OpenZeppelin Contracts.
+\newblock \emph{OpenZeppelin Documentation}, 2020.
+\newblock \url{https://docs.openzeppelin.com/contracts/}
+
+% §3 Architecture (lines 205, 207)
+\bibitem{erc20}
+Vogelsteller, F. and Buterin, V.
+\newblock EIP-20: Token Standard.
+\newblock \emph{Ethereum Improvement Proposals}, 2015.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-20}
+
+\bibitem{erc4626}
+Santoro, J., t11s, Jadeja, J., and Cuesta Ca\~{n}ada, A.
+\newblock EIP-4626: Tokenized Vaults.
+\newblock \emph{Ethereum Improvement Proposals}, 2022.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-4626}
+
+% §8 Evaluation (line 561)
+\bibitem{kyle1985continuous}
+Kyle, A.S.
+\newblock Continuous Auctions and Insider Trading.
+\newblock \emph{Econometrica}, 53(6):1315--1335, 1985.
+
+% === Uncited references (retained for further reading) ===
+
+\bibitem{uniswap2020}
+Adams, H., Zinsmeister, N., and Robinson, D.
+\newblock Uniswap v2 Core.
+\newblock \emph{Uniswap Documentation}, 2020.
+\newblock \url{https://docs.uniswap.org/}
+
+\bibitem{glassnode2020}
+Glassnode Insights.
+\newblock What Really Happened to MakerDAO on Black Thursday.
+\newblock \emph{Glassnode Analysis}, March 2020.
+\newblock \url{https://insights.glassnode.com/what-really-happened-to-makerdao/}
+
+\bibitem{liu2023terra}
+Liu, J., Makarov, I., and Schoar, A.
+\newblock Anatomy of a Run: The Terra Luna Crash.
+\newblock \emph{Harvard Law School Forum on Corporate Governance}, May 2023.
+\newblock \url{https://corpgov.law.harvard.edu/2023/05/22/anatomy-of-a-run-the-terra-luna-crash/}
+
+\bibitem{qin2021flashloans}
+Qin, K., Zhou, L., Livshits, B., and Gervais, A.
+\newblock Attacking the DeFi Ecosystem with Flash Loans for Fun and Profit.
+\newblock \emph{Financial Cryptography and Data Security (FC)}, LNCS vol.~12674, pp.~3--32, 2021.
+
+\bibitem{nakamoto2008}
+Nakamoto, S.
+\newblock Bitcoin: A Peer-to-Peer Electronic Cash System.
+\newblock 2008.
+\newblock \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem{douceur2002}
+Douceur, J.R.
+\newblock The Sybil Attack.
+\newblock \emph{International Workshop on Peer-to-Peer Systems (IPTPS)}, LNCS vol.~2429, pp.~251--260, 2002.
+
+\bibitem{feist2019}
+Feist, J., Grieco, G., and Groce, A.
+\newblock Slither: A Static Analysis Framework for Smart Contracts.
+\newblock \emph{IEEE/ACM International Workshop on Emerging Trends in Software Engineering for Blockchain (WETSEB)}, pp.~8--15, 2019.
+
+\bibitem{dwork1992}
+Dwork, C. and Naor, M.
+\newblock Pricing via Processing or Combatting Junk Mail.
+\newblock \emph{Advances in Cryptology -- CRYPTO '92}, LNCS vol.~740, pp.~139--147, 1992.
+
+\bibitem{roughgarden2021}
+Roughgarden, T.
+\newblock Transaction Fee Mechanism Design.
+\newblock \emph{ACM Conference on Economics and Computation (EC)}, 2021.
+
+\bibitem{apx}
+Karun The Rich.
+\newblock XPower Banq: Technical Appendices.
+\newblock \emph{Companion Document}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\end{thebibliography}
+
+% ==============================================================================
+% Glossary
+% ==============================================================================
+\section*{Glossary}
+\label{sec:glossary}
+\addcontentsline{toc}{section}{Glossary}
+
+\noindent A comprehensive glossary with over 120 entries appears in \cite[Part~III]{apx}. The following terms are central to this paper.
+
+\begin{description}[leftmargin=!,labelwidth=2.5cm]
+    \item[Beta Cap] Position limit following \mbox{$12\lambda(1-\lambda)^2$} distribution where $\lambda$ is the user's fraction of total supply; peaks at $\lambda = 1/3$ and vanishes at boundaries.
+
+    \item[Debt Assumption] Liquidation model where the liquidator assumes the victim's debt rather than repaying it; enables capital-efficient liquidation without requiring liquid capital.
+
+    \item[Health Factor] Ratio of weighted supply value to weighted borrow value: $H = \sum w_s V_s / \sum w_b V_b$. Liquidation occurs when $H < 1$.
+
+    \item[Lethargic Governance] Parameter change model where values transition asymptotically toward targets, bounded to $0.5\times$--$2\times$ per governance cycle.
+
+    \item[LTV] Loan-to-Value ratio --- maximum borrowing power as fraction of collateral value; default $w_s/w_b = 85/255 \approx 33\%$.
+
+    \item[Position Lock] Irrevocable fraction of a position restricted from redemption; locked suppliers earn a bonus, locked borrowers receive a malus (discount), and locked positions act as circuit breakers during cascades.
+
+    \item[Spread] (1)~Oracle: bidirectional geomean of relative spreads from both AMM query directions, stored as $\log_2(1 + s_{\text{geo}})$. (2)~IRM: symmetric half-spread applied to base rate; borrow rate = base~$\times$~$(1{+}s)$, supply rate = base~$\times$~$(1{-}s)$.
+
+    \item[Supply / Borrow Position] ERC20 tokens representing collateral (standard transfer) and debt (inverted transfer: \texttt{transfer} \emph{pulls} debt). Health check on sender (supply) or receiver (borrow).
+
+    \item[TWAP] Time-Weighted Average Price --- price smoothed via log-space EMA (geometric mean temporal averaging) to resist manipulation.
+
+    \item[Utilization] Ratio of borrowed to supplied assets in a vault; drives interest rates via a piecewise-linear model with a kink at optimal utilization.
+\end{description}
+
+% Ensure even page count for duplex printing
+\clearpage
+\ifodd\value{page}\else\thispagestyle{empty}\null\clearpage\fi
+
+\end{document}
