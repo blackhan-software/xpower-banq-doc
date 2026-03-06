@@ -1,0 +1,95 @@
+================================================================================
+SETTLE TRANSACTION ANALYSIS (8th)
+================================================================================
+
+Transaction Hash: 0xe917de3c8b99c7421f4293d2d60905bea24434476e3d811eaca100311394dd1f
+Gas Used:         233,603
+Gas Limit:        236,624 (0x39c50)
+Gas Price:        1.54 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4b25d36bcc2c20473d061cd41937737a80673e94
+To (Pool):        0x1e7d8d53547b9ac773699041212a78d7bab33387
+Function:         settle(address,uint256)
+Selector:         0x15afd409
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           2 wei (clears debt to exactly zero)
+
+================================================================================
+EVENTS EMITTED (8 total)
+================================================================================
+
+1. Transfer (APOW): user -> pool            | settlement payment
+2. Transfer (APOW): interest -> vault/fee   | interest portion
+3. Transfer (bAPOW): burn from user         | debt tokens burned
+4. Sync (bAPOW): borrow index updated       |
+5. Transfer (APOW): fee distribution        | additional APOW movement
+6. Transfer (sAPOW): supply position update |
+7. LargeHolderRemoved (sAPOW): tracking     | large holder update
+8. Settle (Pool): main event               | 2 wei
+
+================================================================================
+WARM STORAGE ACCESS BENEFITS
+================================================================================
+
+This is the 8th settle in the sequence - all storage slots have been accessed
+by previous transactions:
+
+Slot                                  | Access Type            | Gas Cost
+--------------------------------------|------------------------|----------
+User's borrow position balance        | WARM READ              | 100
+User's token allowance                | WARM READ              | 100
+Borrow position total supply          | WARM READ              | 100
+Borrow index state                    | WARM READ              | 100
+Pool token balances                   | WARM READ              | 100
+Supply position state                 | WARM READ              | 100
+Large holder mapping                  | WARM READ/WRITE        |
+Interest rate model parameters        | WARM READ              | 100
+Oracle state                          | WARM READ              | 100
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Base transaction                            | 21,000   | 9.0%
+Calldata (68 bytes)                         | ~1,088   | 0.5%
+Warm storage reads (~15 slots)              | ~1,500   | 0.6%
+Storage writes (~6 slots)                   | ~30,000  | 12.8%
+Token transfers (4 ERC20)                   | ~60,000  | 25.7%
+Position burns                              | ~35,000  | 15.0%
+Index calculations                          | ~20,000  | 8.6%
+Interest accrual                            | ~15,000  | 6.4%
+Large holder tracking                       | ~12,000  | 5.1%
+Event emissions (8 logs)                    | ~8,000   | 3.4%
+Zero-clearing refunds                       | ~(5,000) |
+Other computation                           | ~35,015  | 15.0%
+--------------------------------------------|----------|------
+TOTAL                                       | 233,603  | 100%
+
+================================================================================
+KEY DIFFERENCES FROM COLD
+================================================================================
+
+                            | Cold (1st)  | Warm (8th)  | Difference
+----------------------------|-------------|-------------|------------
+Gas Used                    | 256,451     | 233,603     | -22,848
+Events Emitted              | 9           | 8           | -1
+Amount Settled              | ~333 APOW   | 2 wei       |
+Storage Access Type         | Cold        | Warm        |
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This settle clears the FINAL 2 wei of debt (complete payoff)
+2. Only 8 logs (no extra supply position transfer for dust amounts)
+3. Warm access saves ~22,848 gas (8.91% reduction)
+4. Zero-clearing may provide gas refund
+
+================================================================================

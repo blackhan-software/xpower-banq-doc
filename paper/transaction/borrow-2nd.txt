@@ -1,0 +1,188 @@
+================================================================================
+BORROW TRANSACTION ANALYSIS (2nd)
+================================================================================
+
+Transaction Hash: 0xf154fd12ad1a79e0b78850ed20234e4d4c9c92904411639bd2b43a94dc6394df
+Block Number:     77,402,745
+Gas Used:         516,087
+Gas Price:        1.538 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4B25D36bCC2c20473D061CD41937737A80673e94
+To (Pool):        0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Function:         borrow(address,uint256)
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           166.500000000000000000 APOW (requested)
+bAPOW Minted:     166.500000000000000000 bAPOW
+Interest Accrued: 0.000245657818540402 bAPOW (from prior borrow)
+APOW Received:    164.851485148514851484 APOW (after vault exit fee)
+
+================================================================================
+CONTRACTS INVOLVED
+================================================================================
+
+Pool:             0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Token (APOW):     0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3
+Vault (vAPOW):    0xca12939d7a8189fe063a32f1280258498c734565
+BorrowPosition:   0xf11a4e8d4c53bc6d7d59393dae3e6f611a2c6f22 (bAPOW)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.borrow(APOW, 166.5e18)
+  |
+  +-- ReentrancyGuardTransient check (TSTORE/TLOAD)
+  |
+  +-- RateLimited modifier (storage reads - WARM)
+  |
+  +-- PowLimited modifier (timestamp storage - WARM)
+  |
+  +-- _borrow(user, APOW, 166.5e18, lock=false)
+  |     +-- BorrowPosition.mint(user, 166.5e18, lock=false)
+  |     |     +-- _accrueInterest(user)
+  |     |     |     +-- totalOf(user) > 0 (has prior debt)
+  |     |     |     +-- Calculate accrued interest
+  |     |     |     +-- _mint(user, ~0.000246 bAPOW)    [INTEREST ACCRUAL]
+  |     |     |           +-- emit Transfer              [Transfer #1 - interest]
+  |     |     |           +-- _reindex()
+  |     |     |           +-- emit Reindex               [Reindex #1]
+  |     |     |
+  |     |     +-- Cap checks (abs_limit, rel_limit)
+  |     |     |
+  |     |     +-- _mint(user, 166.5e18)
+  |     |           +-- _increaseHolders(~166.5e18, 166.5e18)
+  |     |           |     +-- balanceOf(user) = ~166.5e18 > threshold
+  |     |           |     +-- No _largeHolders update needed
+  |     |           |
+  |     |           +-- _reindexMore(user, 166.5e18)
+  |     |           |     +-- _principalOf[user] += amount [WARM SSTORE: X->Y]
+  |     |           |     +-- _userIndex[user] = index     [WARM SSTORE: X->Y]
+  |     |           |
+  |     |           +-- super._update(0, user, 166.5e18)
+  |     |           |     +-- _totalSupply += value        [WARM SSTORE]
+  |     |           |     +-- _balances[user] += value     [WARM SSTORE: X->Y]
+  |     |           |     +-- emit Transfer                [Transfer #2 - bAPOW]
+  |     |           |
+  |     |           +-- _reindex()
+  |     |                 +-- Vault.util() call
+  |     |                 +-- _index_ray, _stamp updates   [WARM SSTORE]
+  |     |                 +-- emit Reindex                 [Reindex #2 - skipped*]
+  |     |
+  |     +-- vault.redeem(shares, user, pool)
+  |           +-- convertToShares(166.5e18)
+  |           +-- vAPOW burn (pool shares)            [Transfer #3 - vAPOW burn]
+  |           +-- APOW transfer to user               [Transfer #4 - APOW]
+  |           +-- emit Withdraw                       [Withdraw event]
+  |
+  +-- _checkHealth(user)
+  |     +-- healthOf(user) calculation
+  |     +-- Reads supply positions, oracle prices (WARM)
+  |     +-- Requires wnav_supply >= wnav_borrow
+  |
+  +-- emit Borrow                                     [Borrow event]
+
+* Reindex may be optimized if index hasn't changed since interest accrual
+
+================================================================================
+WARM STORAGE WRITES (SSTORE X->Y = 2,900 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[user]               | bAPOW           | 2,900
+_principalOf[user]            | bAPOW           | 2,900
+_userIndex[user]              | bAPOW           | 2,900
+_largeHolders (no change)     | bAPOW           | 0
+------------------------------|-----------------|----------
+TOTAL WARM SSTORE             |                 | 8,700
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Intrinsic gas (21,000 base + calldata)      | ~24,000  | 4.6%
+ReentrancyGuard + modifiers                 | ~6,000   | 1.2%
+BorrowPosition.mint() - warm storage        | ~145,000 | 28.1%
+  - Warm SSTOREs (3 x 2,900)                |   8,700  |
+  - Interest accrual mint                   | ~35,000  |
+  - External calls (util, decimals)         |  ~9,000  |
+  - Computation + events                    | ~92,300  |
+Vault.redeem() + vAPOW burn                 | ~85,000  | 16.5%
+_checkHealth() - health computation         | ~110,000 | 21.3%
+  - healthOf() calculation (warm reads)     | ~70,000  |
+  - Oracle price queries                    | ~40,000  |
+Pool events + misc                          | ~146,087 | 28.3%
+--------------------------------------------|----------|------
+TOTAL                                       | 516,087  | 100%
+
+================================================================================
+EVENTS EMITTED (7 total)
+================================================================================
+
+1. Transfer (bAPOW): interest accrual       | ~0.000246 bAPOW
+2. Reindex (bAPOW): position index update   |
+3. Transfer (bAPOW): mint to user           | 166.5 bAPOW
+4. Transfer (vAPOW): burn from pool         | vault shares
+5. Transfer (APOW): vault -> user           | ~164.85 APOW
+6. Withdraw (vAPOW): vault redemption       |
+7. Borrow (Pool): main event                | 166.5 APOW, lock=false
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a WARM borrow - user already has a bAPOW position from prior tx
+2. All user-specific mappings already have non-zero values
+3. SSTORE operations are cheap (2,900 gas vs 22,100 for cold)
+4. The _largeHolders counter is NOT incremented (user already a large holder)
+5. Interest accrual occurs (~26 seconds elapsed since first borrow)
+6. Interest accrual ADDS gas (extra mint + events) - partially offsets savings
+7. BorrowPosition.mint() gas reduced by ~30,000 gas compared to cold borrow
+8. Total gas is 8.4% lower than cold borrow (516,087 vs 563,546)
+
+================================================================================
+WARM STORAGE READ BENEFITS
+================================================================================
+
+Storage Slot                  | Cold SLOAD | Warm SLOAD | Savings
+------------------------------|------------|------------|--------
+_balances[user]               | 2,100      | 100        | 2,000
+_principalOf[user]            | 2,100      | 100        | 2,000
+_userIndex[user]              | 2,100      | 100        | 2,000
+_lock[user]                   | 2,100      | 100        | 2,000
+Supply position reads         | ~8,400     | ~400       | ~8,000
+------------------------------|------------|------------|--------
+TOTAL SLOAD SAVINGS           |            |            | ~16,000
+
+Note: Some slots become warm within the same transaction, so actual
+savings depend on access order. Cross-transaction warmth provides
+the most significant benefit for SSTORE operations.
+
+================================================================================
+INTEREST ACCRUAL OVERHEAD
+================================================================================
+
+The warm borrow includes interest accrual which ADDS gas:
+
+Operation                     | Gas Cost
+------------------------------|----------
+_accrueable(user) calculation | ~2,000
+_mint(user, interest_amount)  | ~18,000
+  - _increaseHolders check    |  ~1,000
+  - _reindexMore              |  ~5,000
+  - super._update             |  ~5,000
+  - _reindex                  |  ~4,000
+  - emit Transfer             |  ~3,000
+------------------------------|----------
+TOTAL INTEREST OVERHEAD       | ~20,000
+
+This overhead partially offsets the cold->warm storage savings.
+
+================================================================================

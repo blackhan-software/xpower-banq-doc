@@ -1,0 +1,83 @@
+================================================================================
+SETTLE TRANSACTION ANALYSIS (1st)
+================================================================================
+
+Transaction Hash: 0x589c007e88e3a8e5bab29bae935eb9dc05555f12798897fa5014ce366966313b
+Gas Used:         256,451
+Gas Limit:        259,639 (0x3f637)
+Gas Price:        1.54 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4b25d36bcc2c20473d061cd41937737a80673e94
+To (Pool):        0x1e7d8d53547b9ac773699041212a78d7bab33387
+Function:         settle(address,uint256)
+Selector:         0x15afd409
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           333,000,008,999,999,977,277 wei (~333.00 APOW)
+
+================================================================================
+EVENTS EMITTED (9 total)
+================================================================================
+
+1. Transfer (APOW): user -> pool            | settlement payment
+2. Transfer (APOW): interest -> vault/fee   | interest portion
+3. Transfer (bAPOW): burn from user         | debt tokens burned
+4. Sync (bAPOW): borrow index updated       |
+5. Transfer (APOW): fee distribution        | additional APOW movement
+6. Transfer (sAPOW): supply position update |
+7. LargeHolderRemoved (sAPOW): tracking     | large holder update
+8. Transfer (sAPOW): position adjustment    | EXTRA - only in tx 1-3
+9. Settle (Pool): main event               | 333.00 APOW
+
+================================================================================
+COLD STORAGE ACCESS COSTS
+================================================================================
+
+This is the FIRST settle in the sequence, so many storage slots are accessed for
+the first time in this block context:
+
+Slot                                  | Access Type            | Gas Cost
+--------------------------------------|------------------------|----------
+User's borrow position balance        | COLD READ              | 2,100
+User's token allowance                | COLD READ              | 2,100
+Borrow position total supply          | COLD READ              | 2,100
+Borrow index state                    | COLD READ              | 2,100
+Pool token balances                   | COLD READ              | 2,100
+Supply position state                 | COLD READ              | 2,100
+Large holder mapping                  | COLD READ/WRITE        | multiple
+Interest rate model parameters        | COLD READ              | 2,100
+Oracle state                          | COLD READ              | 2,100
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Base transaction                            | 21,000   | 8.2%
+Calldata (68 bytes)                         | ~1,088   | 0.4%
+Cold storage reads (~15 slots)              | ~31,500  | 12.3%
+Storage writes (~6 slots)                   | ~30,000  | 11.7%
+Token transfers (5 ERC20)                   | ~75,000  | 29.2%
+Position burns                              | ~35,000  | 13.6%
+Index calculations                          | ~20,000  | 7.8%
+Interest accrual                            | ~15,000  | 5.8%
+Large holder tracking                       | ~12,000  | 4.7%
+Event emissions (9 logs)                    | ~9,000   | 3.5%
+Other computation                           | ~6,863   | 2.7%
+--------------------------------------------|----------|------
+TOTAL                                       | 256,451  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This settle clears ~333 APOW of debt (most of the total)
+2. The 9 logs indicate additional supply position transfer (fee/interest distribution)
+3. Cold access penalty adds ~15-20k gas compared to warm settle
+
+================================================================================

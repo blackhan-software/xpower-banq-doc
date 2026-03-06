@@ -1,0 +1,8 @@
+xpower-banq-*.pdf
+xpower-banq.pdf
+*.fdb_latexmk
+*.aux
+*.fls
+*.log
+*.out
+*.pyc

@@ -1,0 +1,157 @@
+================================================================================
+SUPPLY TRANSACTION ANALYSIS (2nd)
+================================================================================
+
+Transaction Hash: 0x38fcd1adf781b506167d275580210c2ad486ac95d86539dd15f9ff011a91bb28
+Block Number:     77,401,481
+Gas Used:         305,912
+Gas Price:        1.561 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4B25D36bCC2c20473D061CD41937737A80673e94
+To (Pool):        0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Function:         supply(address,uint256)
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           1.000999999999999890 APOW
+sAPOW Minted:     0.999999999999999889 sAPOW
+Fee Paid:         0.001000 APOW (to treasury)
+
+================================================================================
+CONTRACTS INVOLVED
+================================================================================
+
+Pool:             0x1e7d8d53547b9AC773699041212a78D7bAb33387
+Token (APOW):     0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3
+Vault (vAPOW):    0xca12939d7a8189fe063a32f1280258498c734565
+SupplyPosition:   0x385e2c9180ef482eafd589a8c48ab1f8d0bec1f8 (sAPOW)
+Fee Recipient:    0x11ec53cfe088505b9c3712ea0ee27365b8df81fe
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.supply(APOW, ~1e18)
+  |
+  +-- ReentrancyGuardTransient check (TSTORE/TLOAD)
+  |
+  +-- RateLimited modifier (storage reads - WARM)
+  |
+  +-- PowLimited modifier (timestamp storage - WARM)
+  |
+  +-- APOW.transferFrom(user -> pool)              [Transfer #1]
+  |
+  +-- Vault.deposit(amount)
+  |     +-- APOW.transferFrom(pool -> vault)       [Transfer #2]
+  |     +-- Mint vAPOW shares to pool              [Transfer #3 - vAPOW]
+  |     +-- emit Reindex                           [Reindex #1]
+  |
+  +-- SupplyPosition.mint(user, assets, lock=false)
+  |     +-- _accrueInterest(user)
+  |     |     +-- totalOf(user) > 0 (WARM read)
+  |     |     +-- May mint accrued interest
+  |     |
+  |     +-- Cap checks (abs_limit, rel_limit)
+  |     |
+  |     +-- _mint(user, amount)
+  |           +-- _increaseHolders(~999e18, ~1e18)
+  |           |     +-- balanceOf(user) = ~999e18 > threshold
+  |           |     +-- No _largeHolders update needed
+  |           |
+  |           +-- _reindexMore(user, ~1e18)
+  |           |     +-- _principalOf[user] += amount [WARM SSTORE: X->Y]
+  |           |     +-- _userIndex[user] = index     [WARM SSTORE: X->Y]
+  |           |
+  |           +-- super._update(0, user, ~1e18)
+  |           |     +-- _totalSupply += value        [WARM SSTORE]
+  |           |     +-- _balances[user] += value     [WARM SSTORE: X->Y]
+  |           |     +-- emit Transfer                [Transfer #4 - sAPOW]
+  |           |
+  |           +-- _reindex()
+  |                 +-- Vault.util() call
+  |                 +-- _index_ray, _stamp updates   [WARM SSTORE]
+  |                 +-- emit Reindex                 [Reindex #2]
+  |
+  +-- Fee transfer: vault -> treasury              [Transfer #5]
+  |
+  +-- emit Supply                                  [Supply event]
+
+================================================================================
+WARM STORAGE WRITES (SSTORE X->Y = 2,900 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[user]               | sAPOW           | 2,900
+_principalOf[user]            | sAPOW           | 2,900
+_userIndex[user]              | sAPOW           | 2,900
+_largeHolders (no change)     | sAPOW           | 0
+------------------------------|-----------------|----------
+TOTAL WARM SSTORE             |                 | 8,700
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Intrinsic gas (21,000 base + calldata)      | ~24,000  | 7.8%
+ReentrancyGuard + modifiers                 | ~6,000   | 2.0%
+APOW transfers (user->pool, pool->vault)    | ~52,000  | 17.0%
+Vault.deposit() + vAPOW mint                | ~45,000  | 14.7%
+SupplyPosition.mint() - warm storage        | ~87,400  | 28.6%
+  - Warm SSTOREs (3 x 2,900)                |   8,700  |
+  - Interest accrual (if any)               | ~15,000  |
+  - External calls (util, decimals)         |  ~9,000  |
+  - Computation + events                    | ~54,700  |
+Fee transfer                                | ~26,000  | 8.5%
+Pool events + misc                          | ~65,512  | 21.4%
+--------------------------------------------|----------|------
+TOTAL                                       | 305,912  | 100%
+
+================================================================================
+EVENTS EMITTED (8 total)
+================================================================================
+
+1. Transfer (APOW): user -> pool            | ~1.001 APOW
+2. Transfer (APOW): pool -> vault           | ~1.001 APOW
+3. Transfer (vAPOW): mint to pool           | vault shares
+4. Reindex (vAPOW): vault index update      |
+5. Transfer (APOW): vault -> treasury       | ~0.001 APOW (fee)
+6. Transfer (sAPOW): mint to user           | ~1.0 sAPOW
+7. Reindex (sAPOW): position index update   |
+8. Supply (Pool): main event                | ~1.001 APOW, lock=false
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a WARM supply - user already has an sAPOW position from prior tx
+2. All user-specific mappings already have non-zero values
+3. SSTORE operations are cheap (2,900 gas vs 22,100 for cold)
+4. The _largeHolders counter is NOT incremented (user already a large holder)
+5. Interest accrual may occur if time has passed since last interaction
+6. SupplyPosition.mint() gas reduced by ~57,600 gas compared to cold supply
+7. Total gas is 15.8% lower than cold supply (305,912 vs 363,500)
+
+================================================================================
+WARM STORAGE READ BENEFITS
+================================================================================
+
+Storage Slot                  | Cold SLOAD | Warm SLOAD | Savings
+------------------------------|------------|------------|--------
+_balances[user]               | 2,100      | 100        | 2,000
+_principalOf[user]            | 2,100      | 100        | 2,000
+_userIndex[user]              | 2,100      | 100        | 2,000
+_lock[user]                   | 2,100      | 100        | 2,000
+------------------------------|------------|------------|--------
+TOTAL SLOAD SAVINGS           |            |            | ~8,000
+
+Note: Some slots become warm within the same transaction, so actual
+savings depend on access order. Cross-transaction warmth provides
+the most significant benefit for SSTORE operations.
+
+================================================================================

@@ -1,0 +1,94 @@
+================================================================================
+REDEEM TRANSACTION ANALYSIS (3rd)
+================================================================================
+
+Transaction Hash: 0xccbca056bbf465feb7836c3a1a6c76af1a655c4a2683a677b8bb1c3d565bcf8e
+Gas Used:         369,817
+Gas Limit:        373,919 (0x5b49f)
+Gas Price:        1.56 gwei
+Status:           Success
+
+================================================================================
+TRANSACTION DETAILS
+================================================================================
+
+From:             0x4b25d36bcc2c20473d061cd41937737a80673e94
+To (Pool):        0x1e7d8d53547b9ac773699041212a78d7bab33387
+Function:         redeem(address,uint256)
+Selector:         0x1e9a6950
+Token:            APOW (0x250b5f96a1e1d986bb2dd3a9ef78fa595c8b7dd3)
+Amount:           999,999,287 wei (~0.000000000999999287 APOW)
+
+================================================================================
+EVENTS EMITTED (6 total)
+================================================================================
+
+1. Transfer (sAPOW): burn from user         | 999,999,287 wei (dust cleanup)
+2. Sync (sAPOW): supply index updated       |
+3. Transfer (vAPOW): burn from pool         | 38,738,000,921,594,302 vault shares
+4. Transfer (APOW): vault -> user           | 989,159,964 wei
+5. Redeem (Vault): ERC4626 event            | processes underlying redemption
+6. Redeem (Pool): main event               | completes position closure
+
+================================================================================
+WARM STORAGE ACCESS BENEFITS
+================================================================================
+
+This is the 3rd redeem in the sequence - all storage slots have been accessed
+by previous transactions:
+
+Slot                                  | Access Type            | Gas Cost
+--------------------------------------|------------------------|----------
+User's supply position balance        | WARM READ              | 100
+Supply position total supply          | WARM READ              | 100
+Supply index state                    | WARM READ              | 100
+Vault shares balance (Pool)           | WARM READ              | 100
+Vault total assets                    | WARM READ              | 100
+Vault total supply                    | WARM READ              | 100
+Token balance (Vault)                 | WARM READ              | 100
+Token balance (Pool)                  | WARM READ              | 100
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Base transaction                            | 21,000   | 5.7%
+Calldata (68 bytes)                         | ~1,088   | 0.3%
+Warm storage reads (~12 slots)              | ~1,200   | 0.3%
+Storage writes (~5 slots)                   | ~25,000  | 6.8%
+Supply position burn                        | ~40,000  | 10.8%
+Vault share burn                            | ~40,000  | 10.8%
+Token transfer (ERC20)                      | ~65,000  | 17.6%
+Index calculations                          | ~20,000  | 5.4%
+Interest accrual                            | ~25,000  | 6.8%
+Event emissions (6 logs)                    | ~6,000   | 1.6%
+ERC4626 preview/convert                     | ~15,000  | 4.1%
+Zero-clearing refunds                       | ~(5,000) |
+Other computation                           | ~115,529 | 31.2%
+--------------------------------------------|----------|------
+TOTAL                                       | 369,817  | 100%
+
+================================================================================
+KEY DIFFERENCES FROM COLD
+================================================================================
+
+                            | Cold (1st)  | Warm (3rd)  | Difference
+----------------------------|-------------|-------------|------------
+Gas Used                    | 384,707     | 369,817     | -14,890
+Events Emitted              | 6           | 6           | 0
+Amount Redeemed             | 1000 APOW   | ~1 nanoAPOW |
+Storage Access Type         | Cold        | Warm        |
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This redeem clears the FINAL dust of the supply position
+2. Same 6 logs as cold (no pattern change based on amount)
+3. Warm access saves ~14,890 gas (3.87% reduction)
+4. Dust amount still requires full transaction overhead
+5. Position is completely closed after this transaction
+
+================================================================================
