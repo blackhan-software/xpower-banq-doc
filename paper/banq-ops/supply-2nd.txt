@@ -1,0 +1,136 @@
+================================================================================
+SUPPLY TRANSACTION ANALYSIS (Warm)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_supply_warm()
+Gas Used:         243,980  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 285,000
+User:             self — full interaction history (supply, borrow, settle, redeem)
+Amount:           100 AVAX (18 decimals)
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+Rate Limit:       max=7 days, min=1 days
+
+Prior state of `self`:
+  - supply(AVAX, 1000 AVAX)        already done in setUp
+  - borrow(AVAX, maxBorrow/4)      already done in setUp
+  - settle(AVAX, debt/10)          already done in setUp
+  - redeem(AVAX, supply/20)        already done in setUp
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.supply(AVAX, 100e18)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- ratelimited modifier (storage reads - WARM)
+  |
+  +-- powlimited modifier (timestamp storage - WARM)
+  |
+  +-- AVAX.transferFrom(user -> pool)                 [Transfer #1]
+  |
+  +-- Vault.deposit(amount)
+  |     +-- AVAX.transferFrom(pool -> vault)          [Transfer #2]
+  |     +-- Mint vAVAX shares to pool                 [Transfer #3 - vAVAX]
+  |     +-- emit Reindex                              [Reindex #1]
+  |
+  +-- SupplyPosition.mint(user, assets, lock=false)
+  |     +-- _accrueInterest(user)
+  |     |     +-- totalOf(user) > 0 (WARM read)
+  |     |     +-- May mint accrued interest
+  |     |
+  |     +-- Cap checks (abs_limit, rel_limit)
+  |     |
+  |     +-- _mint(user, amount)
+  |           +-- _increaseHolders(existing, assets)
+  |           |     +-- balanceOf(user) > threshold
+  |           |     +-- No _largeHolders update needed
+  |           |
+  |           +-- _reindexMore(user, assets)
+  |           |     +-- _principalOf[user] += amount  [WARM SSTORE: X->Y]
+  |           |     +-- _userIndex[user] = index      [WARM SSTORE: X->Y]
+  |           |
+  |           +-- super._update(0, user, assets)
+  |           |     +-- _totalSupply += value         [WARM SSTORE]
+  |           |     +-- _balances[user] += value      [WARM SSTORE: X->Y]
+  |           |     +-- emit Transfer                 [Transfer #4 - sAVAX]
+  |           |
+  |           +-- _reindex()
+  |                 +-- Vault.util() call
+  |                 +-- _index_ray, _stamp updates    [WARM SSTORE]
+  |                 +-- emit Reindex                  [Reindex #2]
+  |
+  +-- No fee transfer (vault fee = 0)
+  |
+  +-- emit Supply                                     [Supply event]
+
+================================================================================
+WARM STORAGE WRITES (SSTORE X->Y = 2,900 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[user]               | sAVAX           | 2,900
+_principalOf[user]            | sAVAX           | 2,900
+_userIndex[user]              | sAVAX           | 2,900
+_largeHolders (no change)     | sAVAX           | 0
+------------------------------|-----------------|----------
+TOTAL WARM SSTORE             |                 | 8,700
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy, ratelimit, pow)      | ~8,000   | 3.3%
+AVAX transfers (user->pool, pool->vault)    | ~52,000  | 21.3%
+Vault.deposit() + vAVAX mint               | ~45,000  | 18.4%
+SupplyPosition.mint() - warm storage        | ~72,000  | 29.5%
+  - Warm SSTOREs (3 x 2,900)               |   8,700  |
+  - Interest accrual (if any)              | ~15,000  |
+  - External calls (util, decimals)        |  ~9,000  |
+  - Computation + events                   | ~39,300  |
+Pool events + misc                         | ~66,980  | 27.5%
+--------------------------------------------|----------|------
+TOTAL                                       | 243,980  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a WARM supply — user already has full interaction history
+2. All user-specific mappings already have non-zero values
+3. SSTORE operations are cheap (2,900 gas vs 22,100 for cold)
+4. The _largeHolders counter is NOT incremented (user already a large holder)
+5. Interest accrual may occur (time has passed since last interaction)
+6. Total gas is 24.8% lower than cold supply (243,980 vs 324,660)
+
+================================================================================
+WARM STORAGE READ BENEFITS
+================================================================================
+
+Storage Slot                  | Cold SLOAD | Warm SLOAD | Savings
+------------------------------|------------|------------|--------
+_balances[user]               | 2,100      | 100        | 2,000
+_principalOf[user]            | 2,100      | 100        | 2,000
+_userIndex[user]              | 2,100      | 100        | 2,000
+_lock[user]                   | 2,100      | 100        | 2,000
+------------------------------|------------|------------|--------
+TOTAL SLOAD SAVINGS           |            |            | ~8,000
+
+Note: Some slots become warm within the same transaction, so actual
+savings depend on access order. Cross-transaction warmth provides
+the most significant benefit for SSTORE operations.
+
+================================================================================
