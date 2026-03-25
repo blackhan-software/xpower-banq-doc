@@ -1,0 +1,139 @@
+================================================================================
+REDEEM TRANSACTION ANALYSIS (Cold)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_redeem_cold()
+Gas Used:         314,549  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 375,000
+User:             cold2 (0xc012) — has supply + borrow, never redeemed
+Amount:           100 AVAX (100e18)
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+
+Prior state of cold2:
+  - supply(AVAX, 1000 AVAX)        done in setUp
+  - borrow(AVAX, maxBorrow/4)      done in setUp
+  - No settle or redeem
+
+Modifiers:        nonReentrant only (no ratelimited, no powlimited)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.redeem(AVAX, 100e18)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- _redeem(cold2, AVAX, 100e18)
+  |     +-- SupplyPosition.burn(cold2, 100e18)
+  |     |     +-- _accrueInterest(cold2)
+  |     |     |     +-- totalOf(cold2) > 0 (has supply position)
+  |     |     |     +-- Calculate and accrue interest
+  |     |     |
+  |     |     +-- _burn(cold2, 100e18)
+  |     |           +-- _decreaseHolders(existing, 100e18)
+  |     |           |     +-- balanceOf(cold2) >> threshold
+  |     |           |     +-- No _largeHolders update
+  |     |           |
+  |     |           +-- _reindexLess(cold2, 100e18)
+  |     |           |     +-- _principalOf[cold2] -= amt  [WARM SSTORE: X->Y]
+  |     |           |     +-- _userIndex[cold2] = index   [WARM SSTORE: X->Y]
+  |     |           |
+  |     |           +-- super._update(cold2, 0, 100e18)
+  |     |           |     +-- _totalSupply -= value       [WARM SSTORE]
+  |     |           |     +-- _balances[cold2] -= value   [WARM SSTORE: X->Y]
+  |     |           |     +-- emit Transfer               [Transfer #1 - sAVAX burn]
+  |     |           |
+  |     |           +-- _reindex()
+  |     |                 +-- Vault.util() call
+  |     |                 +-- _index_ray, _stamp updates  [WARM SSTORE]
+  |     |                 +-- emit Reindex                [Reindex #1]
+  |     |
+  |     +-- Convert assets to vault shares
+  |     +-- vault.redeem(shares, cold2, pool)
+  |           +-- vAVAX burn (pool shares)                [Transfer #2 - vAVAX burn]
+  |           +-- AVAX transfer to cold2                  [Transfer #3 - AVAX]
+  |           +-- emit Withdraw                           [Withdraw event]
+  |
+  +-- _checkHealth(cold2)
+  |     +-- _healthOf(cold2) calculation
+  |     +-- Iterates all tokens, reads supply + borrow positions
+  |     +-- Oracle.getQuotes() for each token
+  |     +-- Applies weights, requires wnav_supply >= wnav_borrow
+  |
+  +-- emit Redeem                                         [Redeem event]
+
+================================================================================
+WHY ALL STORAGE IS WARM
+================================================================================
+
+Despite being the user's first redeem, all supply-position storage for cold2
+is already warm from the prior supply() call in setUp:
+
+  - _balances[cold2]    was written during supply → WARM
+  - _principalOf[cold2]  was written during supply → WARM
+  - _userIndex[cold2]    was written during supply → WARM
+
+Redeem only burns supply position tokens — it does NOT create new user-specific
+storage slots. All slots being modified were already initialized by supply.
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy only)                 | ~3,000   | 1.0%
+SupplyPosition.burn()                       | ~45,000  | 14.3%
+  - Warm SSTOREs                           | ~11,600  |
+  - Interest accrual                       | ~15,000  |
+  - Computation + events                   | ~18,400  |
+Vault.redeem() + vAVAX burn                | ~85,000  | 27.0%
+  - Share conversion + ERC4626             | ~15,000  |
+  - vAVAX burn                             | ~30,000  |
+  - AVAX transfer to user                  | ~40,000  |
+_checkHealth() - health computation         | ~120,000 | 38.1%
+  - _healthOf() calculation                | ~80,000  |
+  - Oracle price queries                   | ~40,000  |
+Pool Redeem event + misc                   | ~61,549  | 19.6%
+--------------------------------------------|----------|------
+TOTAL                                       | 314,549  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a "cold" redeem but all user storage is actually WARM
+2. Supply-position storage was initialized during the prior supply() call
+3. _checkHealth() dominates gas cost at ~38% (oracle queries)
+4. Vault.redeem() is the second largest consumer at ~27%
+5. Gas cost is virtually identical to warm redeem (314,558)
+6. No rate limiting or PoW limiting (only nonReentrant)
+7. Redeem requires health check (reduces collateral, may affect solvency)
+
+================================================================================
+COMPARISON TO OTHER OPERATIONS
+================================================================================
+
+Operation    | Cold Gas  | Has Health Check | Has Rate/PoW Limits
+-------------|-----------|------------------|--------------------
+Supply       | 324,660   | No               | Yes
+Borrow       | 434,871   | Yes              | Yes
+Settle       | 170,263   | No               | No
+Redeem       | 314,549   | Yes              | No
+
+Redeem is comparable to supply in gas cost, but for different reasons:
+  - No modifiers overhead (saves ~7k vs supply)
+  - Health check overhead (adds ~120k)
+  - Net result: similar total gas (~315k vs ~325k)
+
+================================================================================
