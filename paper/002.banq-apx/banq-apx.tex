@@ -1,0 +1,1894 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+
+% ==============================================================================
+% Packages
+% ==============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{newunicodechar}
+\usepackage{libertinus}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{placeins}  % For \FloatBarrier
+
+% Float parameters to prevent overlapping
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.7}
+
+% Prevent line breaks inside inline math (fixes broken superscripts/sqrt)
+\relpenalty=10000
+\binoppenalty=10000
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+
+% ==============================================================================
+% Colors and Styling
+% ==============================================================================
+\definecolor{codeblue}{RGB}{0,102,204}
+\definecolor{codepurple}{RGB}{128,0,128}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codegray}{RGB}{128,128,128}
+\definecolor{primaryblue}{RGB}{41,98,255}
+\definecolor{warningred}{RGB}{220,53,69}
+\definecolor{successgreen}{RGB}{40,167,69}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=primaryblue,
+    urlcolor=primaryblue
+}
+
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{codeblue}\bfseries,
+    commentstyle=\color{codegreen},
+    stringstyle=\color{codepurple},
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    numbersep=4pt,
+    xleftmargin=2em,
+    framexleftmargin=2em,
+    breaklines=true,
+    frame=single,
+    captionpos=b
+}
+\lstdefinelanguage{Solidity}{
+    keywords={function, returns, return, if, else, for, while, do, break, continue, throw, require, revert, assert, public, private, internal, external, view, pure, payable, memory, storage, calldata, constant, immutable, virtual, override, modifier, event, emit, struct, enum, mapping, contract, interface, library, abstract, is, new, delete, true, false, uint256, uint128, uint64, uint32, uint8, int256, int128, int64, int32, int8, address, bool, bytes, bytes32, string},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[b]'
+}
+
+% ==============================================================================
+% Theorem Environments
+% ==============================================================================
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{property}{Property}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+% ==============================================================================
+% Title and Authors
+% ==============================================================================
+\title{\textbf{\Large XPower Banq: Technical Appendices}\\[0.3em]
+\normalsize Part~I\@: Mathematical Theory \& Proofs \enspace$\cdot$\enspace Part~II\@: Simulations \& Risk Analysis\\
+Part~III\@: References \& Glossary}
+
+\author{
+    \textsc{Karun The Ritch}\thanks{\url{https://www.xpowerbanq.com}}
+}
+
+\date{}
+
+\renewcommand{\thepage}{APX/\arabic{page}}
+
+% ==============================================================================
+% Document Begin
+% ==============================================================================
+\begin{document}
+
+\maketitle
+
+% arXiv-style vertical tag on first page
+\begin{tikzpicture}[remember picture, overlay]
+  \node[rotate=90, anchor=center, font=\Huge, color=codegray]
+    at ([xshift=1cm]current page.west)
+    {preprint:2601~~[q-fin.CP]~~15 Jan 2026};
+\end{tikzpicture}
+
+\appendix
+
+
+
+% ==============================================================================
+% PART I --- Mathematical Theory & Proofs
+% ==============================================================================
+\clearpage
+\onecolumn
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+  {\fontsize{36}{42}\selectfont\bfseries Part I}\\[1.5em]
+  {\LARGE Mathematical Theory \& Proofs}\\[1em]
+  {\large\color{codegray} Appendices A--C}
+\end{center}
+\vspace*{\fill}
+\clearpage
+\twocolumn
+
+\section{Mathematical Foundations}
+\label{apx:math}
+
+\subsection{Interest Accrual}
+
+Interest accrues via continuous compounding with ray precision (27 decimals).
+
+\begin{definition}[Position Index]
+The global index $I_t$ at time $t$ with annual rate $r$:
+\begin{equation}
+I_t = I_0 \cdot e^{r \cdot (t - t_0) / T_{\text{year}}}
+\end{equation}
+where $T_{\text{year}} = 365.25 \times 86400 = 31{,}557{,}600$ seconds.
+\end{definition}
+
+\begin{theorem}[Balance Accrual]
+A user's total balance $B_t$ given principal $P$ and checkpoint index $I_u$:
+\begin{equation}
+B_t = P \cdot \frac{I_t}{I_u}
+\end{equation}
+\end{theorem}
+
+\subsection{Time-Weighted Integration}
+
+\begin{definition}[Time-Weighted Mean]
+\label{def:time-weighted-mean}
+For parameter values $\theta_i$ at times $t_i$:
+\begin{equation}
+\bar{\theta}(t) = \frac{\sum_{i=0}^{n-1} \theta_i \cdot (t_{i+1} - t_i) + \theta_n \cdot (t - t_n)}{t - t_0}
+\end{equation}
+\end{definition}
+
+\subsection{Oracle Price Aggregation}
+
+\begin{definition}[Log-Space TWAP Quote]
+\label{def:twap-quote}
+Each refresh queries the AMM bidirectionally and computes:
+\begin{align}
+m_t &= \log_2(\bar{p}_t) && \text{(log mid price)} \\
+s^{AB}_{t,log} &= \log_2(1 + s^{AB}_t) && \text{(log spread AB)} \\
+s^{BA}_{t,log} &= \log_2(1 + s^{BA}_t) && \text{(log spread BA)} \\
+r_t &= \tfrac{1}{2}\bigl(s^{AB}_{t,log} + s^{BA}_{t,log}\bigr) && \text{(log geomean spread)}
+\end{align}
+The EMA smooths in log space with decay $\alpha$:
+\begin{align}
+\overline{m}_t &= \alpha \cdot \overline{m}_{t-1} + (1{-}\alpha) \cdot m_{t} \\
+\overline{r}_t &= \alpha \cdot \overline{r}_{t-1} + (1{-}\alpha) \cdot r_{t}
+\end{align}
+\end{definition}
+
+\begin{definition}[Spread Scaling]
+\label{def:spread-scaling}
+For position size $n$ tokens and base spread $s = 2^{\overline{r}} - 1$:
+\begin{align}
+x &= n \cdot s, \quad \mu = \log_2(2x + 2), \quad s' = s \cdot \mu
+\end{align}
+Final quotes: $\text{bid}(n) = \text{value} - s' \cdot \text{value}/2$, $\text{ask}(n) = \text{value} + s' \cdot \text{value}/2$.
+\end{definition}
+
+\subsection{Rate Limiting}
+
+\begin{definition}[Token Bucket]
+A rate limiter with capacity $C$, regeneration rate 1/second, and cost $c$:
+\begin{equation}
+C'(t) = \min\left(C_{\max}, C(t_{\text{last}}) + (t - t_{\text{last}})\right) - c
+\end{equation}
+Operation allowed iff $C'(t) \geq 0$.
+\end{definition}
+
+\section{Formal Proofs}
+\label{apx:proofs}
+
+\subsection{Cascade Attenuation Proof}
+
+\begin{proof}[Proof of the Cascade Attenuation Theorem (\S4.1 of~\cite{wp})]
+Let liquidation of position $P$ with lock fraction $\phi$ transfer supply tokens $S$ to liquidator $L$.
+
+\textbf{Step 1:} By the Position Lock definition (\S4.1 of~\cite{wp}), locked supply tokens cannot be redeemed: $\text{redeem}(S_{\text{locked}}) \to \text{revert}$.
+
+\textbf{Step 2:} Liquidator $L$ receives position tokens, not underlying assets. The underlying assets remain in the Vault.
+
+\textbf{Step 3:} Only unlocked fraction $(1{-}\phi)$ can generate sell pressure. Price impact: $\Delta p = f((1{-}\phi) \cdot V_{\text{sold}})$.
+
+\textbf{Step 4:} Lock property is preserved through transfer (the lock transfer formula, \S4.1 of~\cite{wp}). Therefore the cascade amplification factor is bounded by $(1{-}\phi)$.
+\end{proof}
+
+\subsection{Sybil Rate-Limiting}
+
+\begin{definition}[Sybil Resistance Scope]
+\label{def:sybil-scope}
+The cap system bounds accumulation \emph{rate} via holder-count scaling. It does \textbf{not} guarantee that more accounts hurts an attacker's long-term equilibrium share---simulation shows $<$2\% penalty over 60 weeks.
+\end{definition}
+
+\begin{theorem}[Sybil Attack Cost]
+\label{thm:sybil-cost}
+For an attacker to increase total cap gain by factor $F$, they must create $k > F^2 \cdot (n{+}2) - (n{+}2)$ accounts. This quadratic scaling makes large gains expensive.
+\end{theorem}
+
+\begin{proof}
+With 1 account: $C_1 = C_{\max} \cdot \beta(\lambda) / \sqrt{n{+}2}$. With $k$ equal accounts and small $\lambda/k$: $C_k \approx 12\lambda C_{\max}/\sqrt{n{+}k{+}2}$. For $C_k > F \cdot C_1$: $\sqrt{n{+}2}/\sqrt{n{+}k{+}2} > F/k$, yielding the stated bound.
+\end{proof}
+
+\subsection{Governance Rate Bound Proof}
+
+\begin{proof}[Proof of the Governance Rate Bound (\S6 of~\cite{wp})]
+\textbf{Step 1 (Single bound):} Each transition satisfies $\theta_0/\mu \leq \theta_1 \leq \mu \cdot \theta_0$, enforced by \texttt{Governed} modifier.
+
+\textbf{Step 2 (Rate limiting):} \texttt{setTarget()} is limited to once per $\Delta t_{\min}$. In interval $(t{-}t_0)$, at most $n = \lfloor(t{-}t_0)/\Delta t_{\min}\rfloor$ transitions occur.
+
+\textbf{Step 3 (Composition):} After $n$ transitions: $\theta_n \leq \mu^n \theta_0$ and $\theta_n \geq \mu^{-n} \theta_0$.
+
+\textbf{Step 4 (Transitions):} During transitions, the time-weighted mean stays between $\theta_{\text{old}}$ and $\theta_{\text{new}}$, preserving the bound.
+\end{proof}
+
+\begin{corollary}[Attack Detection Window]
+To change a parameter by factor $F > \mu$: $T_{\text{attack}} \geq \lceil\log_\mu F\rceil \cdot \Delta t_{\min}$. With $\mu = 2$, $\Delta t_{\min} = 1$ month, a $10\times$ change requires 4~months.
+\end{corollary}
+
+\subsection{MEV Front-Running Resistance}
+
+\begin{theorem}[MEV Front-Running Cost]
+\label{thm:mev}
+A liquidation with profit $\pi$ cannot be profitably front-run if:
+$H_{\text{attacker}}/H_{\text{victim}} < \text{block time}/T_{\text{PoW}}(\pi)$
+\end{theorem}
+
+\begin{proof}
+The PoW hash includes \texttt{tx.origin}, preventing solution reuse. The attacker must solve independently within one block time (${\sim}2$ seconds on Avalanche). With expected solve time $T = 16^d/H$, front-running fails when $T > \text{block time}$.
+\end{proof}
+
+\section{Nash Equilibrium Analysis for Lock Adoption}
+\label{apx:nash}
+
+This appendix analyzes the game-theoretic equilibrium of lock adoption. We model rational actors choosing between locked and unlocked positions, accounting for APY differentials, secondary market dynamics, and liquidation seniority.
+
+\subsection{Model Setup}
+
+\subsubsection{Position Types and Rates}
+
+With spread $s = 10\%$ and $r_{\text{bonus}} = r_{\text{malus}} = s$:
+
+\begin{center}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l r >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Position Type & Rate Multiplier & APY vs.\ Base \\
+\midrule
+Unlocked Supplier & $(1-s) = 0.90$ & $-10\%$ \\
+Locked Supplier & $(1+r_{\text{bonus}})(1-s) = 0.99$ & $-1\%$ \\
+Unlocked Borrower & $(1+s) = 1.10$ & $+10\%$ \\
+Locked Borrower & $(1-r_{\text{malus}})(1+s) = 0.99$ & $-1\%$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The \textbf{APY differential} between locked and unlocked positions:
+\begin{equation}
+\Delta r = r_{\text{base}} \times (1-s) \times r_{\text{bonus}} = r_{\text{base}} \times 0.9 \times 0.1 = 0.09 \times r_{\text{base}}
+\end{equation}
+
+\subsubsection{Secondary Market Dynamics}
+
+Position tokens are ERC20-transferable, enabling secondary market trading. However, locked positions trade at a \textbf{discount} $D$ relative to NAV because:
+\begin{enumerate}
+    \item Locked positions cannot be redeemed for underlying assets
+    \item Exit is only possible via secondary market sale
+    \item Lock status transfers proportionally with tokens (buyers receive locked tokens)
+\end{enumerate}
+
+The discount $D$ is endogenous to market conditions, typically ranging from 3--10\%\footnote{Empirical range observed in secondary markets for illiquid DeFi positions: Lido stETH traded at 6--7\% discount during the June 2022 liquidity crisis (Nansen, ``On-Chain Forensics: Demystifying stETH's De-peg,'' 2022); Convex cvxCRV has traded at 5--12\% discount to CRV due to permanent lock-up (geeogi, ``cvxCRV peg,'' 2022).} based on:
+\begin{itemize}
+    \item Secondary market liquidity depth
+    \item Expected holding period of market participants
+    \item Overall lock adoption rate (affecting liquidity)
+\end{itemize}
+
+\subsection{Player Utility Functions}
+
+\subsubsection{Supplier Utility}
+
+For a supplier with lock ratio $\rho \in [0,1]$ and holding period $T$:
+
+\textbf{Unlocked position} ($\rho = 0$):
+\begin{equation}
+U_{\text{unlocked}} = P \times (1 + r_{\text{unlocked}})^T
+\end{equation}
+
+\textbf{Locked position} ($\rho = 1$):
+\begin{equation}
+U_{\text{locked}} = P \times (1 + r_{\text{locked}})^T \times (1 - D)
+\end{equation}
+
+where the $(1-D)$ factor reflects the secondary market discount on exit.
+
+\subsubsection{Breakeven Condition}
+
+Lock adoption is rational when $U_{\text{locked}} > U_{\text{unlocked}}$:
+\begin{equation}
+(1 + r_{\text{locked}})^T \times (1 - D) > (1 + r_{\text{unlocked}})^T
+\end{equation}
+
+Solving for the \textbf{breakeven holding period} $T^*$:
+\begin{equation}
+\label{eq:breakeven}
+T^* = \frac{\ln(1-D)}{\ln(1 + r_{\text{unlocked}}) - \ln(1 + r_{\text{locked}})} \approx \frac{D}{\Delta r}
+\end{equation}
+
+\subsection{Breakeven Analysis by Utilization}
+
+The base interest rate $r_{\text{base}}$ varies with utilization $U$ according to the piecewise-linear model (\S4.7 of~\cite{wp}). Table~\ref{tab:nash-breakeven} presents breakeven periods for various utilization levels.
+
+\begin{table}[htbp]
+\centering
+\caption{Breakeven holding periods by utilization}
+\label{tab:nash-breakeven}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Utilization $U$ & Base Rate $r$ & Differential $\Delta r$ & $T^*$ ($D=5\%$) & $T^*$ ($D=3\%$) \\
+\midrule
+80\% & 8.9\% & 0.80\% & 6.3y & 3.8y \\
+90\% & 10\% & 0.90\% & 5.6y & 3.3y \\
+95\% & 55\% & 4.95\% & 12m & 7m \\
+98\% & 82\% & 7.38\% & 8m & 5m \\
+100\% & 100\% & 9.0\% & 6.7m & 4m \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Lock adoption thus becomes economically attractive primarily during high-utilization periods ($U > 95\%$), precisely when cascade prevention is most valuable.
+
+\subsection{Liquidation Seniority Value}
+
+Locked positions gain \emph{de facto} seniority in liquidations because liquidators prefer unlocked positions (immediate liquidity). The seniority value $S(\bar{\rho})$ depends on aggregate lock adoption $\bar{\rho}$ (denoted $\phi$ in the Cascade Attenuation Theorem (\S4.1 of~\cite{wp})):
+
+\begin{equation}
+S(\bar{\rho}) \approx P(\text{liquidation}) \times (1 - \bar{\rho}) \times L_{\text{loss}}
+\end{equation}
+
+where $P(\text{liquidation})$ is the probability of a liquidation event and $L_{\text{loss}}$ is the expected loss in liquidation.
+
+This creates a \textbf{coordination game}: seniority value decreases as lock adoption increases. At $\bar{\rho} = 0$, locked positions have maximum seniority; at $\bar{\rho} = 1$, no differentiation exists.
+
+\subsection{Nash Equilibrium Characterization}
+
+\subsubsection{Equilibrium Condition}
+
+At equilibrium lock adoption $\bar{\rho}^*$, the marginal user is indifferent between locking and not locking:
+\begin{equation}
+\underbrace{\Delta r \times T}_{\text{APY benefit}} + \underbrace{S(\bar{\rho}^*)}_{\text{Seniority}} = \underbrace{D}_{\text{Discount cost}}
+\end{equation}
+
+\subsubsection{Utilization-Dependent Equilibria}
+
+\begin{table}[htbp]
+\centering
+\caption{Equilibrium lock adoption by utilization regime}
+\label{tab:nash-equilibria}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Utilization Regime & Base Rate & Expected $\bar{\rho}^*$ & Protocol Margin \\
+\midrule
+Normal ($U \in [0,90\%)$) & $<10\%$ & 10--20\% & 16--18\% of $r$ \\
+Elevated ($U \in [90\%,95\%)$) & 10--55\% & 20--40\% & 12--16\% of $r$ \\
+Stressed ($U \in [95\%,100\%]$) & $>55\%$ & 40--70\% & 6--12\% of $r$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The mechanism thus aligns incentives with protocol needs: under normal conditions, low lock adoption preserves revenue, while under stressed conditions, high adoption provides cascade protection when it is most needed.
+
+\subsection{Protocol Margin Analysis}
+
+\subsubsection{Margin as Function of Lock Adoption}
+
+Protocol margin per unit interest flow:
+\begin{equation}
+M(\bar{\rho}) = 2s - r_{\text{bonus}} \times \bar{\rho}^S - r_{\text{malus}} \times \bar{\rho}^B
+\end{equation}
+
+With $r_{\text{bonus}} = r_{\text{malus}} = s$ and assuming $\bar{\rho}^S = \bar{\rho}^B = \bar{\rho}$:
+\begin{equation}
+M(\bar{\rho}) = 2s(1 - \bar{\rho})
+\end{equation}
+
+\begin{table}[htbp]
+\centering
+\caption{Protocol margin by lock adoption}
+\label{tab:nash-margin}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Lock Adoption $\bar{\rho}$ & Margin & Retention \\
+\midrule
+0\% & 20\% of $r$ & 100\% \\
+25\% & 15\% of $r$ & 75\% \\
+50\% & 10\% of $r$ & 50\% \\
+75\% & 5\% of $r$ & 25\% \\
+100\% & 0\% of $r$ & 0\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Solvency at Full Adoption}
+
+The default configuration operates at the solvency boundary:
+\begin{equation}
+r_{\text{bonus}} + r_{\text{malus}} = s + s = 2s \quad \checkmark
+\end{equation}
+
+Protocol solvency is maintained for any $\bar{\rho} \in [0, 1]$, though margin approaches zero as $\bar{\rho} \to 1$.
+
+\subsection{Stability Analysis}
+
+\subsubsection{Multiple Equilibria}
+
+The lock adoption game exhibits \textbf{multiple equilibria} due to the endogenous discount:
+
+\begin{enumerate}
+    \item \textbf{Low-adoption equilibrium} ($\bar{\rho}^* \approx 10\%$): Thin secondary market $\Rightarrow$ high discount $D$ $\Rightarrow$ locking unattractive $\Rightarrow$ low adoption (self-reinforcing)
+
+    \item \textbf{High-adoption equilibrium} ($\bar{\rho}^* \approx 60\%$): Deep secondary market $\Rightarrow$ low discount $D$ $\Rightarrow$ locking attractive $\Rightarrow$ high adoption (self-reinforcing)
+\end{enumerate}
+
+\subsubsection{Equilibrium Selection}
+
+The realized equilibrium depends on:
+\begin{itemize}
+    \item \textbf{Initial conditions}: Early lock adoption seeds secondary market liquidity
+    \item \textbf{Utilization dynamics}: High-utilization periods push toward high-adoption equilibrium
+    \item \textbf{External liquidity}: Protocol-seeded liquidity can bootstrap the high-adoption equilibrium
+\end{itemize}
+
+\subsection{Summary}
+
+The lock mechanism creates a self-regulating system in which rational actors provide cascade protection precisely when the protocol most needs it.
+
+\begin{theorem}[Lock Adoption Equilibrium]
+\label{thm:nash}
+With $r_{\text{bonus}} = r_{\text{malus}} = s = 10\%$:
+\begin{enumerate}
+    \item Lock adoption is \textbf{utilization-dependent}: attractive when $U > 95\%$, marginal otherwise
+    \item The APY differential $\Delta r = 9\% \times r_{\text{base}}$ provides maximum incentive within solvency constraints
+    \item Lock adoption \textbf{self-regulates}: increases during stress (cascade protection) and decreases during calm (revenue preservation)
+    \item Protocol margin ranges from 20\% of $r$ (no locks) to 0\% of $r$ (full locks), with expected operating range 8--16\% of $r$
+\end{enumerate}
+\end{theorem}
+
+The secondary market discount acts as a natural governor---preventing full adoption while ensuring sufficient incentive for meaningful cascade protection---so the mechanism achieves incentive alignment without external intervention.
+
+The welfare balance is favorable. Cascade attenuation reduces depth by factor~$(1{-}\phi)$, and spread compression rewards committed participants---at full lock with $s = r_{\text{bonus}} = r_{\text{malus}} = 10\%$, both locked suppliers and borrowers face effective rate multiplier~$0.99$, approaching a zero-spread market. Against these benefits stands liquidity fragmentation: locked supply raises effective utilization to $U_{\text{eff}} = V_b / (V_s(1{-}\phi))$, potentially triggering kink-rate dynamics at lower borrow volumes. The interest rate curve absorbs this naturally---higher effective utilization raises rates, incentivizing settlement---so the effect narrows the sub-kink operating range without creating instability.
+
+Together, these properties confirm Theorem~\ref{thm:nash}: the mechanism is self-regulating, with per-parameter solvency bounds that require no on-chain adoption tracking, cascade dynamics that naturally throttle liquidation velocity, and welfare effects that the interest rate curve absorbs without instability.
+
+\subsubsection{Equilibrium Structure}
+
+The game exhibits two self-reinforcing equilibria: high adoption ($\bar{\rho} > 40\%$, margin 8--12\% of~$r$, strong cascade protection) and low adoption ($\bar{\rho} < 15\%$, margin 16--20\% of~$r$, high cascade exposure). Selection is path-dependent---seeding secondary market liquidity bootstraps the high-adoption regime, while neglect traps the protocol in low adoption. Governance can influence this by initially setting $r_{\text{bonus}}$ above the long-run target, then reducing it via lethargic transition once adoption stabilizes.
+
+Within either regime, the mechanism is countercyclical: lock adoption rises above $U = 95\%$ when cascade prevention is most valuable, then recedes as utilization normalizes, restoring margin. Lethargic governance reinforces this---the 0.5x--2x per-cycle parameter bound ensures that equilibrium shifts occur gradually enough for the secondary market to adjust. During stress, protocol margin decreases as the intended trade-off for cascade protection, and recovers during the subsequent normalization.
+
+The equilibrium is asymmetric across position types. Locked suppliers earn at effective rate $r_{\text{base}}(1{-}s)(1{+}r_{\text{bonus}} \cdot \rho_u)$ but must compensate the secondary market discount~$D$, requiring $U > 95\%$ for rational adoption. Locked borrowers pay at effective rate $r_{\text{base}}(1{+}s)(1{-}r_{\text{malus}} \cdot \rho_u)$---reducing an \emph{obligation} with no redemption friction---making $\bar{\rho}^B > \bar{\rho}^S$ in the normal regime, converging during stress as the supply bonus dominates. A plausible operating point ($\bar{\rho}^S \approx 15\%$, $\bar{\rho}^B \approx 35\%$) yields:
+\begin{equation}
+M = 2s - s \cdot \bar{\rho}^S - s \cdot \bar{\rho}^B = 20\% - 1.5\% - 3.5\% = 15\% \text{ of } r
+\end{equation}
+within the sustainable range of Table~\ref{tab:nash-margin}.
+
+\subsubsection{Cascade Dynamics and Keeper Sizing}
+
+Debt assumption transfers locks proportionally, preserving aggregate~$\bar{\rho}$ through cascades---the attenuation bound $(1{-}\phi)$ from Theorem~4.1 of~\cite{wp} holds dynamically, not merely at a pre-crash snapshot. At $\bar{\rho} \approx 30\%$, this reduces 25\%-shock liquidations from 85.7\% to~$\approx$55\% of positions (Table~5 of~\cite{wp}). However, locked supply received by a liquidator cannot be redeemed: absorbing a fully-locked victim at exponent~$e$ increases assumed debt by $d = V_b \cdot 2^{-e}$ while adding zero redeemable supply, eroding headroom for subsequent liquidations.
+
+The exponent choice is itself strategic. Choosing $e = 0$ captures the full position---maximizing per-event profit but inheriting the full lock fraction. Choosing $e \geq 1$ halves the position taken, reducing lock inheritance at the cost of leaving the remainder available to competitors. In equilibrium, the optimal~$e$ reflects each liquidator's current health factor and the remaining cascade depth: unconstrained liquidators with ample headroom prefer small~$e$, while capacity-constrained ones ration across targets. Both effects---lock removal from the liquidation pool and liquidator self-throttling---reinforce cascade attenuation.
+
+Keeper sizing must account for lock propagation. A keeper processing $k$ sequential liquidations needs headroom for both aggregate debt absorbed and the locked fraction that cannot be redeemed. If the expected victim lock fraction is~$\bar{\rho}$, the effective headroom requirement per liquidation increases by factor $1/(1{-}\bar{\rho})$ relative to the unlocked case, since only $(1{-}\bar{\rho})$ of received supply contributes redeemable collateral. The cascade simulation in Appendix~E quantifies this across varying lock fractions and crash severities.
+
+\subsubsection{Solvency Guarantees}
+
+Protocol solvency is enforced algebraically. The supervised contract bounds $r_{\text{bonus}} \leq s$ and $r_{\text{malus}} \leq s$ independently via \texttt{\_setTarget} overrides; since $\bar{\rho}^S, \bar{\rho}^B \in [0,1]$, the aggregate condition $r_{\text{bonus}} \bar{\rho}^S + r_{\text{malus}} \bar{\rho}^B \leq 2s$ holds without on-chain lock-adoption tracking. The worst case ($\bar{\rho}^S = \bar{\rho}^B = 1$) yields zero margin but never insolvency---avoiding the gas overhead of global lock-adoption statistics by relying on per-parameter bounds enforced at governance time. Lock adoption also tightens beta-distributed caps indirectly: locked suppliers are persistent holders, inflating the effective~$n$ in the $\sqrt{n{+}2}$ divisor, while attackers splitting across $k$ accounts face the $O(\sqrt{k})$ cap-scaling barrier \emph{and} irrevocability---acquiring locked positions via secondary market incurs discount~$D$, creating a multiplicative barrier to rapid concentration.
+
+\subsubsection{Welfare}
+
+The welfare balance is favorable. Cascade attenuation reduces depth by factor~$(1{-}\phi)$, and spread compression rewards committed participants---at full lock with $s = r_{\text{bonus}} = r_{\text{malus}} = 10\%$, both locked suppliers and borrowers face effective rate multiplier~$0.99$, approaching a zero-spread market. Against these benefits stands liquidity fragmentation: locked supply raises effective utilization to $U_{\text{eff}} = V_b / (V_s(1{-}\phi))$, potentially triggering kink-rate dynamics at lower borrow volumes. The interest rate curve absorbs this naturally---higher effective utilization raises rates, incentivizing settlement---so the effect narrows the sub-kink operating range without creating instability.
+
+Together, these properties confirm Theorem~\ref{thm:nash}: the mechanism is self-regulating, with per-parameter solvency bounds that require no on-chain adoption tracking, cascade dynamics that naturally throttle liquidation velocity, and welfare effects that the interest rate curve absorbs without instability.
+
+% ==============================================================================
+% PART II --- Simulations & Risk Analysis
+% ==============================================================================
+\clearpage
+\onecolumn
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+  {\fontsize{36}{42}\selectfont\bfseries Part II}\\[1.5em]
+  {\LARGE Simulations \& Risk Analysis}\\[1em]
+  {\large\color{codegray} Appendices D--G}
+\end{center}
+\vspace*{\fill}
+\clearpage
+\twocolumn
+
+\section{Capacity Accumulation Simulation}
+\label{apx:simulation}
+
+The following Python script simulates capacity accumulation under the beta-distributed cap function (the beta cap formula (\S4.4 of~\cite{wp})).
+
+\begin{lstlisting}[language=Python, caption={Capacity accumulation simulation}, label=lst:simulate]
+#!/usr/bin/env python3
+from numpy import sqrt
+
+def my_cap(balance, max_cap, supply, n_accounts) -> float:
+    """
+    Computes the max. individual capacity gain per round
+    for given balance, supply, max. capacity and accounts.
+    """
+    # compute lambda: balance / supply
+    lmb = balance / supply
+    # compute my capacity gain multiplier
+    mul = 12*lmb*(1-lmb)**2
+    # compute my capacity gain divisor
+    div = sqrt(n_accounts + 2)
+    # compute my capacity gain
+    return max_cap * mul / div
+
+if __name__ == "__main__":
+    # epsilon for stopping criterion
+    eps = 1e-3
+    # max. capacity (normalized)
+    max_cap = 1.00
+    # supply (normalized)
+    supply = 1.00
+
+    print(f"beg_balance;n_accounts;iterations")
+    for beg_balance in map(lambda e: 10**(-e), range(1,9)):
+        for n_accounts in map(lambda e: 10**(2*e), range(1,5)):
+
+            end_balance = beg_balance
+            iterations = 0
+
+            # simulate cap gain until close to supply
+            while (supply - end_balance) / supply > eps:
+                end_balance += my_cap(
+                    end_balance, max_cap, supply, n_accounts
+                )
+                iterations += 1
+
+            print(f"{beg_balance:.0e};{n_accounts:.0e};{iterations:.3e}")
+\end{lstlisting}
+
+
+\subsection{Cap Function Components}
+
+The \texttt{my\_cap} function implements the beta cap formula (\S4.4 of~\cite{wp}). The balance ratio $\lambda = B/S$ normalizes across token amounts and decimals. The Beta(2,3) multiplier $12\lambda(1{-}\lambda)^2$ vanishes at both boundaries ($\lambda = 0$ and $\lambda = 1$), peaks at $\lambda = 1/3$, and decays quadratically via $(1{-}\lambda)^2$ as holdings approach monopoly. The holder divisor $\sqrt{n{+}2}$ provides sublinear Sybil resistance: creating more accounts increases $n$, reducing per-account cap gains, with the offset of~2 preventing degeneracy at low holder counts. $C_{\max}$ is the governance-configured upper bound on relative capacity.
+
+\subsection{Simulation Algorithm}
+
+The simulation sweeps over starting balances and holder counts. For each combination, it iteratively adds the cap gain (via \texttt{my\_cap}) to the user's balance until the remaining capacity $(1 - \lambda)$ falls below $\varepsilon = 0.1\%$ of total supply, recording the number of iterations required. The stopping threshold avoids infinite loops caused by the asymptotic decay of the cap function as $\lambda \to 1$. The holder count $n$ is held constant throughout each run; in practice, $n$ would fluctuate as users enter and exit.
+
+\subsection{Convergence Behavior}
+
+Near $\lambda = 0$, the cap gain grows linearly (${\approx}\, 12\lambda / \sqrt{n{+}2}$), producing a fast start. Near $\lambda = 1$, it shrinks quadratically (${\approx}\, 12(1{-}\lambda)^2 / \sqrt{n{+}2}$), producing a slow approach to full capacity. Because most iterations occur in this slow-convergence region, starting balance has minimal impact on total iterations. Since cap gain scales as $1/\sqrt{n}$, iterations scale as $\sqrt{n}$---explaining the $10\times$ increase when moving from $10^2$ to $10^4$ accounts.
+
+\subsection{Representative Output}
+
+\begin{table}[H]
+\centering
+\caption{Simulation results: iterations to full capacity}
+\label{tab:simulation-output}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Starting $\lambda$ & Accounts ($n$) & Iterations \\
+\midrule
+$10^{-2}$ & $10^2$ & 846 \\
+$10^{-2}$ & $10^4$ & 8,417 \\
+$10^{-2}$ & $10^6$ & 84,200 \\
+$10^{-2}$ & $10^8$ & 842,100 \\
+\midrule
+$10^{-4}$ & $10^2$ & 852 \\
+$10^{-4}$ & $10^4$ & 8,458 \\
+$10^{-4}$ & $10^6$ & 84,590 \\
+$10^{-4}$ & $10^8$ & 845,900 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The results confirm the $O(\sqrt{n})$ scaling: $10^4$ accounts require approximately $10\times$ more iterations than $10^2$ accounts. Starting balance has minimal impact ($<$2\% across 7 orders of magnitude), confirming that convergence near $\lambda = 1$ dominates. For a protocol with $10^6$ large holders, any user requires approximately 84,000 iterations to reach full capacity, providing predictable growth independent of initial position size.
+
+\subsection{Multi-Account Share Dynamics}
+
+The following simulation examines how capital shares evolve when multiple accounts compete for capacity under the beta cap function and iteration constraints:
+
+\begin{lstlisting}[language=Python, caption={Multi-account share dynamics simulation}, label=lst:share-sim]
+#!/usr/bin/env python3
+from numpy import sqrt
+
+def beta_cap(balance, max_cap, supply, n_holders):
+    """Beta-distributed cap function (Equation 4)."""
+    lam = balance / supply if supply > 0 else 0
+    mul = 12 * lam * (1 - lam) ** 2
+    div = sqrt(n_holders + 2)  # Per Eq. 4
+    return max_cap * mul / div
+
+def simulate_shares(
+    n_honest, k_sybil,
+    honest_capital, sybil_capital,
+    iters_per_week=7, weeks=60, max_cap=1.0
+):
+    """Simulate share evolution with iteration cap."""
+    n_total = n_honest + k_sybil
+    honest_bal = [honest_capital / n_honest] * n_honest
+    sybil_bal = [sybil_capital / k_sybil] * k_sybil
+    total_supply = honest_capital + sybil_capital
+
+    trajectory = []
+    for week in range(weeks):
+        for _ in range(iters_per_week):
+            honest_bal = [
+                b + beta_cap(b, max_cap, total_supply, n_total)
+                for b in honest_bal
+            ]
+            sybil_bal = [
+                b + beta_cap(b, max_cap, total_supply, n_total)
+                for b in sybil_bal
+            ]
+            total_supply = sum(honest_bal) + sum(sybil_bal)
+
+        honest_share = sum(honest_bal) / total_supply
+        sybil_share = sum(sybil_bal) / total_supply
+        trajectory.append((week, honest_share, sybil_share))
+
+    return trajectory
+\end{lstlisting}
+
+The simulation reveals that capital shares are \emph{persistent}, not convergent: the beta cap function preserves relative capital ratios because capacity gain is proportional to current $\lambda = B/S$.
+
+\begin{table}[H]
+\centering
+\caption{Simulated share evolution (100 honest vs.\ 50 Sybil accounts)}
+\label{tab:share-evolution}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X@{}}
+\toprule
+Scenario & Initial Share & Week 7 & Week 59 \\
+\midrule
+Equal shares & 50\%:50\% & 50.9\%:49.1\% & 51.4\%:48.6\% \\
+Uneq. shares & 10.5\%:89.5\% & 11.2\%:88.8\% & 11.9\%:88.1\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The results show that initial capital distribution strongly influences long-term shares: with a $9\times$ capital advantage, the advantaged party retains 88\% share after 60~weeks. Shares change by less than 2\% over 420~iterations, and the weekly cap is iteration-count bounded (7~per week), so burst timing is irrelevant. The protocol's Sybil resistance therefore derives from the $\sqrt{n{+}2}$ divisor and iteration caps rather than from equilibrium convergence---early capital advantages persist, and the defense operates through structural constraints.
+
+\subsection{Limitations}
+
+The simulation assumes static holder count (in practice, $n$ fluctuates), continuous cap gains (real protocols have discrete rounding), no holder floor dynamics (the bootstrap phase with $n_{\text{real}} < n_{\min}$ is unmodeled), and homogeneous iteration timing (real-world timing variations may introduce minor perturbations).
+The simulation validates two key properties from \S4.4 of~\cite{wp}: (1)~the $O(\sqrt{n})$ iteration scaling, and (2)~starting balance independence for single-account accumulation time. It also reveals that multi-account share dynamics do not converge to account-proportional equilibrium---a finding that informs the rate-limiting analysis in \S4.4 of~\cite{wp}.
+
+\section{Cascade Simulation Implementation}
+\label{apx:cascade-sim}
+
+This appendix provides the cascade simulation implementation. Both scripts share a common \texttt{simulate} function and output semicolon-separated values.
+
+\subsection{Multi-Scenario Comparison}
+
+The following script compares lock effectiveness across five market liquidity scenarios at a fixed 20\% price shock:
+
+\begin{lstlisting}[language=Python, caption={Multi-scenario cascade simulation}, label=lst:cascade-multi]
+#!/usr/bin/env python3
+from numpy import clip, random
+
+def simulate(positions, price_drop, impact_coef):
+    """Simulates liquidation cascade with market impact."""
+    initial_supply = sum(p[0] for p in positions)
+    price = 1.0 - price_drop
+    total_liquidated = 0
+    while True:
+        underwater = [p for p in positions
+            if p[0] > 0 and (p[0] * price) / p[1] < 1.0]
+        if not underwater:
+            break
+        round_sold = 0
+        for p in underwater:
+            unlocked = p[0] * (1 - p[2])
+            round_sold += unlocked
+            total_liquidated += p[0]
+            p[0] = 0
+            p[1] = 0
+        price -= impact_coef * round_sold
+        if price <= 0:
+            break
+    return (total_liquidated / initial_supply * 100
+            ) if initial_supply > 0 else 0
+
+def gen_positions(seed, n, lock):
+    """Generate positions with given lock fraction."""
+    random.seed(seed)
+    sizes = random.lognormal(mean=0, sigma=1, size=n)
+    healths = clip(random.normal(1.5, 0.3, n), 1.0, 3.0)
+    return [[s, s/h, lock] for s, h in zip(sizes, healths)]
+
+if __name__ == "__main__":
+    n, seed, drop = 1000, 42, 0.20
+    scenarios = [("Liquid", 1e-6, 0.2),
+                 ("Moderate", 6e-5, 10.1),
+                 ("Strong", 1.5e-4, 25.2),
+                 ("Severe", 3e-4, 50.5),
+                 ("Extreme", 5e-4, 84.1)]
+    print("scenario;depth;k;liq0;liq1;reduction")
+    for name, k, depth in scenarios:
+        liq0 = simulate(gen_positions(seed, n, 0.0), drop, k)
+        liq1 = simulate(gen_positions(seed, n, 1.0), drop, k)
+        reduction = (liq0-liq1)/liq0 * 100 if liq0 > 0 else 0
+        print(f"{name};{depth:.1f};{k:.0e};{liq0:.1f};{liq1:.1f};{reduction:.1f}")
+\end{lstlisting}
+
+\subsection{Detailed Per-Scenario Analysis}
+
+The following script generates detailed results for a specific scenario, varying both lock fraction and price shock:
+
+\begin{lstlisting}[language=Python, caption={Detailed cascade simulation}, label=lst:cascade-detail]
+#!/usr/bin/env python3
+import sys
+from numpy import clip, random
+
+# simulate() and gen_positions() same as above (omitted)
+
+SCENARIOS = [("Liquid", 1e-6, 0.2),
+             ("Moderate", 6e-5, 10.1),
+             ("Strong", 1.5e-4, 25.2),
+             ("Severe", 3e-4, 50.5),
+             ("Extreme", 5e-4, 84.1)]
+
+if __name__ == "__main__":
+    idx = int(sys.argv[1])  # 0-4
+    name, k, depth = SCENARIOS[idx]
+    n, seed = 1000, 42
+    locks = [0.00, 0.25, 0.50, 0.75, 1.00]
+    drops = [0.10, 0.15, 0.20, 0.25, 0.30]
+    print("lock;drop;liquidated")
+    for lock in locks:
+        for drop in drops:
+            result = simulate(gen_positions(seed, n, lock), drop, k)
+            print(f"{lock:.2f};{drop:.2f};{result:.3f}")
+\end{lstlisting}
+
+\subsection{Algorithm}
+
+The \texttt{simulate} function iterates a liquidation cascade: after applying the initial price drop, it identifies underwater positions ($H < 1$), liquidates them (computing unlocked collateral as supply $\times\,(1{-}\phi)$), applies linear market impact $p \leftarrow p - k \cdot V_{\text{sold}}$, and repeats until no underwater positions remain or price reaches zero.
+
+\subsection{Market Impact Model}
+
+The linear price impact coefficient $k$ determines market depth ($1/k$ in supply units). The five scenarios range from \emph{Liquid} ($k = 10^{-6}$, pool is 0.2\% of depth, no cascade amplification) through \emph{Strong} ($k = 1.5 \times 10^{-4}$, 25\% of depth, 46\% reduction from locks) to \emph{Extreme} ($k = 5 \times 10^{-4}$, 84\% of depth, 80\% reduction). The locked fraction $\phi$ attenuates market impact by factor $(1{-}\phi)$, directly reducing cascade sell pressure.
+
+\subsection{Limitations}
+
+The simulation assumes complete (rather than partial $2^{-e}$) liquidation, a linear impact model (real markets exhibit convex slippage), greedy liquidators (real behavior may involve front-running or strategic timing), and a single collateral asset (cross-collateral pools may exhibit different dynamics).
+
+\section{TWAP Oracle Simulations}
+\label{apx:twap-sim}
+
+This appendix presents simulation results for the log-space EMA smoothing and logarithmic spread scaling mechanisms. The oracle stores $\log_2(\text{mid})$ and $\log_2(1 + s_{\text{geo}})$, smoothed via EMA in log space. All simulations use 18-decimal precision ($1\ \text{unit} = 10^{18}$), matching the Solidity implementation.
+
+\subsection{Decay Factor Visualization}
+
+The EMA decay factor $\lambda = 0.5^{1/h}$ determines how quickly the TWAP responds to price changes, where $h$ is the half-life in refresh periods. As Figure~\ref{fig:app-decay} shows, $\lambda$ approaches 1.0 asymptotically with increasing half-life. The steep initial rise means that small changes in low $h$ values have large effects on responsiveness, while values above $h = 20$ yield diminishing returns. In practice, $\lambda$ values between 0.9 and 0.98 provide the useful operating range: below 0.9 the oracle becomes too reactive, while above 0.98 response times may be too slow for timely liquidations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.decay.pdf}
+\caption{Decay factor $\lambda$ by half-life. Higher half-life values produce decay factors closer to 1.0, making the TWAP more stable but slower to respond. The protocol default uses $h=12$ periods ($\lambda \approx 0.944$).}
+\label{fig:app-decay}
+\end{figure}
+
+\subsection{Price Shock Response}
+
+Figures~\ref{fig:app-refresh-response} and~\ref{fig:app-refresh-decay} demonstrate how the TWAP mean responds to a sudden price shock (100 $\rightarrow$ 150) under different half-life configurations.
+
+The half-life $h$ controls the trade-off between responsiveness and manipulation resistance. Shorter half-lives track market movements closely but are more vulnerable to manipulation; longer half-lives filter transient spikes but delay response to genuine shifts. The log-space EMA update $\overline{q}_{n+1} = \lambda \cdot \overline{q}_n + (1{-}\lambda) \cdot q_n$ ensures smooth convergence without overshooting, with the log transform dampening large deviations more aggressively than a linear EMA. As shown in Figure~\ref{fig:app-refresh-response}, even with HL=24 the TWAP reaches 90\% of the new price within approximately 55~periods.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.refresh-response.pdf}
+\caption{TWAP response to a 50\% price shock at period 5. Shorter half-lives (HL=2) converge quickly but offer less manipulation resistance; longer half-lives (HL=24) provide robust smoothing but respond slowly.}
+\label{fig:app-refresh-response}
+\end{figure}
+
+The memory decay $\lambda^n$ quantifies how quickly historical prices lose influence: after $k$ half-lives the residual weight is $0.5^k$ (12.5\% after 3, $<$1\% after 7). For $h = 12$, an attacker must sustain artificial prices for approximately 40~periods to shift the TWAP by 90\%.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.refresh-decay.pdf}
+\caption{Memory decay showing the weight on pre-shock price over time. After HL periods, the weight on the old value drops to 50\%. Higher half-lives retain more memory of historical prices.}
+\label{fig:app-refresh-decay}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.liquidity.pdf}
+\caption{Spread scaling by liquidity level. Illiquid pairs (high base spread) experience faster spread growth with trade size.}
+\label{fig:app-liquidity}
+\end{figure}
+
+\subsection{Spread Scaling by Liquidity}
+
+The effective spread depends on both position size and market liquidity (captured by the base spread $\sigma$). Figure~\ref{fig:app-liquidity} shows how different liquidity levels affect spread scaling.
+
+The base spread $\sigma$ serves as a proxy for market depth. The formula $\mu = \log_2(2x + 2)$ with $x = n \cdot \sigma$ provides self-calibrating behavior: liquid markets (low $\sigma$) tolerate larger positions before significant spread widening, eliminating the need for per-pair parameter tuning while ensuring conservative valuations in thin markets.
+
+\subsection{Complete Spread Analysis}
+
+Figures~\ref{fig:app-spread-quotes}, \ref{fig:app-spread-percent}, and~\ref{fig:app-spread-multiplier} provide a comprehensive view of the spread scaling mechanism using a base spread of 2\%.
+
+Together, these three views illustrate that while large positions incur wider spreads, the logarithmic scaling keeps them economically reasonable.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.spread-quotes.pdf}
+\caption{Bid/ask quotes diverge from mid-value as trade size increases. The spread between bid and ask widens logarithmically, protecting against large position manipulation.}
+\label{fig:app-spread-quotes}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.spread-percent.pdf}
+\caption{Effective spread grows logarithmically from the base spread (2.0\%). At 1 unit the spread is 2.0\%; at 1{,}000 units it reaches 10.8\%; at 1{,}000{,}000 units it reaches 30.6\%.}
+\label{fig:app-spread-percent}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_twap/plt-twap.spread-multiplier.pdf}
+\caption{The multiplier $\mu = \log_2(2x + 2)$ as a function of $x = n \cdot s$. This function provides bounded logarithmic growth: $\mu = 1$ at $x = 0$, growing to $\mu \approx 21$ at $x = 10^6$.}
+\label{fig:app-spread-multiplier}
+\end{figure}
+
+\subsection{On-Chain Scenario Testing}
+\label{subsec:oracle-scenarios}
+
+To complement the preceding simulations, we conducted comprehensive on-chain scenario testing of the deployed oracle contract using Foundry. The test suite exercises 10~attack and stress scenarios across 6~token/liquidity configurations (60~total tests), measuring mid-price deviation and spread response under adversarial conditions. All tests use the production \texttt{DECAY\_12HL} ($\alpha \approx 0.944$, half-life $h{=}12$ refreshes) with 1-hour refresh intervals. Tables~\ref{tab:scenario-mid} and~\ref{tab:scenario-spread} summarize the results; all values are averages across the 6~configurations unless noted.
+
+\subsubsection{Token/Liquidity Configurations}
+
+The test matrix covers symmetric and asymmetric reserves across all supported decimal combinations:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Oracle scenario test configurations}
+\label{tab:scenario-configs}
+\begin{tabularx}{0.95\columnwidth}{@{}c c X@{}}
+\toprule
+Decimals & Reserves & Profile \\
+\midrule
+18/18 & 100/100 & Symmetric standard \\
+18/18 & 180k/50 & Asymmetric standard \\
+6/6 & 100/100 & Symmetric stablecoin \\
+6/6 & 180k/50 & Asymmetric stablecoin \\
+18/6 & 100/100 & Mixed (18$\to$6) \\
+6/18 & 100/100 & Mixed (6$\to$18) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Mid-Price Manipulation Resistance}
+
+Table~\ref{tab:scenario-mid} records the mid-price deviation $\Delta\%$ from baseline after each scenario, measuring how far an attacker (or legitimate market move) can shift the oracle's reported price.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Mid-price deviation (\%) after each scenario}
+\label{tab:scenario-mid}
+\begin{tabularx}{0.95\columnwidth}{@{}l X r@{}}
+\toprule
+Scenario & Description & $\Delta\%$ \\
+\midrule
+S01 & Benign $\pm$5\% oscillations, 24 refreshes & 2.3\% \\
+S02 & Instant 2$\times$ jump, 14 sustained refreshes & 22.5\% \\
+S03 & Gradual 2$\times$ drift over 12 refreshes & 9.1\% \\
+S04 & 2$\times$ spike, immediate return to baseline & 3.7\% \\
+S05 & 2$\times$ spike, gradual return over 12 refreshes & 14.9\% \\
+S06 & 10$\times$ liquidity increase (same ratio) & ${<}0.01$\% \\
+S07 & Gradual 10$\times$ liquidity increase & ${<}0.01$\% \\
+S08 & 90\% liquidity drain (same ratio) & ${<}0.06$\% \\
+S09 & Gradual 90\% liquidity drain & ${<}0.01$\% \\
+S10a & 3$\times$ manipulation between refreshes & \textbf{0\%} \\
+S10b & 3$\times$ manipulation at single refresh & \textbf{0\%} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Key observations.}
+The delayed EMA provides a \emph{two-tick immunity window}: the first two refreshes after any price spike produce exactly 0\% mid-price impact (S02, ticks~4--5), because the spike enters the \texttt{last} slot on the first refresh and only propagates into \texttt{mean} on the third (${\sim}4\%$ absorption per tick). After 14~sustained refreshes, only 22.5\% of a $2\times$ move has been absorbed, consistent with the theoretical bound from \S4.6 of~\cite{wp}. Inter-refresh manipulation (S10a) has exactly zero effect, as does single-tick manipulation at refresh time (S10b). Liquidity changes at constant price ratio (S06--S09) produce negligible mid-price deviation ($<$0.06\%), confirming that the log-space mid tracks price independently of pool depth.
+
+\subsubsection{Spread Auto-Widening Response}
+
+Table~\ref{tab:scenario-spread} records the spread percentage for a 1-unit query before and after liquidity changes. The spread correctly reflects pool depth without manual parameterization.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Spread response to liquidity changes (1-unit query)}
+\label{tab:scenario-spread}
+\begin{tabularx}{0.95\columnwidth}{@{}l X r r@{}}
+\toprule
+Scenario & Description & Before & After \\
+\midrule
+S06 & Sudden 10$\times$ liquidity & 2.53\% & 2.37\% \\
+S07 & Gradual 10$\times$ liquidity & 2.53\% & 1.98\% \\
+S08 & Sudden 90\% drain & 2.06\% & 3.06\% \\
+S09 & Gradual 90\% drain & 2.06\% & 2.52\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+EMA smoothing of the log-space spread produces an asymmetry between sudden and gradual changes: sudden liquidity addition yields $\approx$2.37\% after 3~ticks (partial absorption), while gradual addition over 12~ticks converges to $\approx$1.98\%. Sudden removal produces ${\sim}50\%$ spread widening (2.06\%\,$\to$\,3.06\%), providing immediate protection against thin-pool manipulation.
+
+\subsubsection{Decimal Invariance}
+
+All scenarios produce identical behavior (to within rounding) across the 6~token configurations. The sole exception is the (6/6, 180k/50) configuration, where integer truncation in 6-decimal arithmetic produces slightly coarser values (e.g., S04 residual of 3.99\% vs.\ 3.74\% elsewhere). This confirms that the log-space design is fundamentally decimal-agnostic.
+
+\subsubsection{Strengths and Weaknesses}
+
+\paragraph{Strengths.}
+\begin{enumerate}[leftmargin=*]
+\item \emph{Two-tick delay buffer}: The first two refreshes after a spike show 0\% mid-price impact, providing strong flash manipulation resistance.
+\item \emph{Inter-refresh immunity}: Price changes between refresh windows have exactly zero effect on the oracle.
+\item \emph{Self-calibrating spread}: The spread correctly widens and tightens with pool depth changes while keeping the mid stable, without per-pair configuration.
+\item \emph{Decimal invariance}: Behavior is consistent across all token decimal combinations (6, 18, and mixed).
+\end{enumerate}
+
+\paragraph{Weaknesses (inherent to DECAY\_12HL).}
+\begin{enumerate}[leftmargin=*]
+\item \emph{Slow convergence}: After a legitimate $2\times$ price move, only ${\sim}22.5\%$ is absorbed after 14~hours, potentially enabling arbitrage against stale prices.
+\item \emph{EMA reversal lag}: After a $2\times$ spike and full return to baseline, ${\sim}15\%$ residual remains, as the EMA retains memory of past spikes beyond their market relevance.
+\item \emph{Slow drift undertracking}: A gradual $2\times$ move over 12~hours shows only 9.1\% oracle movement, creating a persistent gap between reported and actual price.
+\end{enumerate}
+
+These weaknesses are the intentional cost of heavy smoothing ($\alpha \approx 0.944$). The design prioritizes manipulation resistance over responsiveness---appropriate for a lending protocol where the cost of oracle manipulation (bad debt) exceeds the cost of lagging genuine price moves (delayed liquidations). The hourly refresh cadence further limits the attack surface, as an attacker cannot increase the sampling rate to accelerate EMA convergence toward a manipulated price.
+
+% ==============================================================================
+% Appendix G: Bad Debt Risk Quantification
+% ==============================================================================
+\section{Bad Debt Risk Quantification}
+\label{apx:bad-debt}
+
+\noindent\textit{This appendix was originally published as a standalone companion document and is reproduced here for completeness.}
+
+\subsection{Introduction}
+\label{sec:bd-intro}
+
+XPower Banq's log-space TWAP oracle provides robust manipulation resistance---approximately 40~hours of sustained artificial pricing are required to achieve 90\% deviation~\cite{mackinga2022}. However, the same smoothing that resists manipulation delays response to genuine market crashes. After an instantaneous price crash, only ${\sim}50\%$ of the log-space deviation is absorbed after 13~hourly refreshes (the 12-hour half-life). Combined with the 1-hour rate limit between oracle updates, the protocol can be 2+~hours blind during a crash.
+
+This appendix provides a complete risk quantification framework:
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Oracle Lag Model} (\S\ref{sec:bd-oracle-lag}): Formal characterization of the EMA convergence delay and the resulting phantom-healthy window.
+\item \textbf{Monte Carlo Simulation} (\S\ref{sec:bd-montecarlo}): Jump-diffusion price paths with ETH-calibrated parameters, swept across LTV and oracle decay configurations.
+\item \textbf{Analytical Bound} (\S\ref{sec:bd-bound}): Closed-form upper bound on bad debt as a function of crash magnitude, oracle decay, and LTV.
+\item \textbf{Safe Operating Region} (\S\ref{sec:bd-safety}): Parameter configurations satisfying the $<$5\% TVL constraint.
+\end{enumerate}
+
+All simulations use fixed random seeds for reproducibility.
+
+% ==============================================================================
+% 2. Oracle Lag Model
+% ==============================================================================
+\subsection{Oracle Lag Model}
+\label{sec:bd-oracle-lag}
+
+\subsubsection{EMA Update Semantics}
+\label{subsec:bd-ema}
+
+The TWAP oracle (\texttt{TWAP.sol}) performs an EMA update on each refresh. Critically, the update blends the stored mean with the \emph{previous} observation (\texttt{last}), not the current one (\texttt{next}):
+\begin{align}
+\overline{m}_n &= \alpha \cdot \overline{m}_{n-1} + (1{-}\alpha) \cdot \ell_{n-1} \label{eq:ema-update} \\
+\ell_n &= q_n \label{eq:last-update}
+\end{align}
+where $\overline{m}_n$ is the smoothed log-price, $\ell_n$ is the stored last observation, and $q_n$ is the current market price (in $\log_2$ space). This creates a \emph{one-refresh delay}: a new price enters the mean only on the \emph{following} refresh.
+
+\subsubsection{Step-Crash Convergence}
+\label{subsec:bd-step-crash}
+
+After an instantaneous crash of fraction $\delta$ at time $t_0$ (price drops from $p_0$ to $p_0(1{-}\delta)$), the oracle-reported price after $n$ refreshes follows:
+\begin{equation}
+\label{eq:oracle-trajectory}
+\hat{p}(n) = p_0 \cdot 2^{\overline{m}_n}
+\end{equation}
+where the log-space EMA converges geometrically toward the post-crash price. The fraction of the log-space deviation absorbed by the oracle at refresh $n$ is:
+\begin{equation}
+\label{eq:absorption}
+A(n) = 1 - \alpha^{n-1} \quad (n \geq 2), \qquad A(0) = A(1) = 0
+\end{equation}
+
+Due to the one-refresh delay, the oracle is completely blind for the first refresh after a crash. This log-space absorption is independent of crash magnitude $\delta$---all crashes converge at the same geometric rate $(1{-}\alpha)$ per refresh. The oracle-reported price in linear space is $\hat{p}(n) = p_0 \cdot (1{-}\delta)^{A(n)}$, so linear-space absorption varies with $\delta$. Figure~\ref{fig:oracle-convergence} shows the convergence trajectories for various crash magnitudes, and Table~\ref{tab:absorption} shows log-space absorption percentages for the default decay $\alpha = 0.944$ (12-hour half-life).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/01b_oracle_convergence.pdf}
+\caption{Oracle convergence after step crashes of various magnitudes ($\alpha = 0.944$, 1\,h refresh). The dashed line marks the 12-hour half-life. All crash magnitudes converge at the same geometric rate in log-space, reaching 50\% absorption near $n = 13$ refreshes (accounting for the one-refresh delay).}
+\label{fig:oracle-convergence}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Oracle absorption $A(n)$ after $n$ hourly refreshes ($\alpha = 0.944$)}
+\label{tab:absorption}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r *{5}{>{\centering\arraybackslash}X}@{}}
+\toprule
+$n$ & 20\% & 30\% & 40\% & 50\% & 70\% \\
+\midrule
+1  & 0.0\% & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+2  & 5.6\% & 5.6\% & 5.6\% & 5.6\% & 5.6\% \\
+4  & 15.9\% & 15.9\% & 15.9\% & 15.9\% & 15.9\% \\
+8  & 33.2\% & 33.2\% & 33.2\% & 33.2\% & 33.2\% \\
+12 & 46.9\% & 46.9\% & 46.9\% & 46.9\% & 46.9\% \\
+24 & 73.4\% & 73.4\% & 73.4\% & 73.4\% & 73.4\% \\
+48 & 93.3\% & 93.3\% & 93.3\% & 93.3\% & 93.3\% \\
+72 & 98.3\% & 98.3\% & 98.3\% & 98.3\% & 98.3\% \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize Log-space absorption $A(n) = 1 - \alpha^{n-1}$ is independent of crash magnitude; linear-space absorption varies with $\delta$.
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/01_oracle_lag_heatmap.pdf}
+\caption{Oracle deviation from true price (\%) as a function of crash magnitude and hours elapsed. The heatmap shows the full convergence surface; larger crashes produce higher absolute deviations but the same geometric decay rate.}
+\label{fig:oracle-lag-heatmap}
+\end{figure}
+
+\subsubsection{Phantom-Healthy Windows}
+\label{subsec:bd-phantom}
+
+\begin{definition}[Phantom-Healthy Position]
+\label{def:phantom}
+A position is \emph{phantom-healthy} at time $t$ when:
+\begin{align}
+H_{\text{oracle}}(t) &= H_0 \cdot \frac{\hat{p}(t)}{p_0} \geq 1 \label{eq:h-oracle} \\
+H_{\text{true}}(t) &= H_0 \cdot (1 - \delta) < 1 \label{eq:h-true}
+\end{align}
+where $H_0$ is the initial health factor.
+\end{definition}
+
+For a position to be truly underwater, the crash must satisfy $\delta > 1 - 1/H_0$. The oracle triggers liquidation when $\hat{p}(n)/p_0 < 1/H_0$, i.e., the oracle price ratio drops below the inverse of the initial health.
+
+\begin{definition}[Phantom-Healthy Window]
+The \emph{phantom-healthy window} $W$ is the number of oracle refreshes during which a position remains phantom-healthy:
+\begin{equation}
+W = \min\left\{n \geq 0 \;\middle|\; \frac{\hat{p}(n)}{p_0} < \frac{1}{H_0}\right\}
+\end{equation}
+\end{definition}
+
+Table~\ref{tab:phantom} shows phantom-healthy windows for representative (crash, initial health) pairs with $\alpha = 0.944$.
+
+\begin{table}[htbp]
+\centering
+\caption{Phantom-healthy window $W$ (hours) by crash magnitude and initial health, $\alpha = 0.944$}
+\label{tab:phantom}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r r *{4}{>{\centering\arraybackslash}X}@{}}
+\toprule
+& & \multicolumn{4}{c}{Initial Health $H_0$} \\
+\cmidrule(l){3-6}
+Crash & & 1.1 & 1.3 & 1.5 & 2.0 \\
+\midrule
+20\% & $W$ & 11 & --- & --- & --- \\
+30\% & $W$ & 7 & 25 & --- & --- \\
+40\% & $W$ & 5 & 14 & 29 & --- \\
+50\% & $W$ & 4 & 10 & 17 & --- \\
+70\% & $W$ & 3 & 6 & 9 & 16 \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize ``---'' indicates the position remains solvent (not underwater). Values verified against step-by-step OracleModel simulation (match within $\pm 1$ refresh).
+\end{table}
+
+\subsubsection{Worst-Case Blind Time}
+\label{subsec:bd-blind}
+
+The worst case occurs when a crash happens immediately after a refresh, adding one full refresh interval of blindness. The total blind time is:
+\begin{equation}
+\label{eq:blind-time}
+t_{\text{blind}} = \Delta t_{\text{refresh}} + W \cdot \Delta t_{\text{refresh}}
+\end{equation}
+
+For the default 33\% LTV configuration (positions initialized near $H_0 = 1.5$):
+\begin{itemize}[leftmargin=*]
+\item \textbf{40\% crash}: $W = 29$ refreshes $\Rightarrow$ $t_{\text{blind}} = 30$~hours
+\item \textbf{50\% crash}: $W = 17$ refreshes $\Rightarrow$ $t_{\text{blind}} = 18$~hours
+\item \textbf{70\% crash}: $W = 9$ refreshes $\Rightarrow$ $t_{\text{blind}} = 10$~hours
+\end{itemize}
+
+\noindent Larger crashes produce shorter phantom windows because the true price diverges more rapidly from the oracle threshold. Positions with higher initial health (further from the liquidation boundary) require more refreshes before the oracle detects their distress.
+
+% ==============================================================================
+% 3. Monte Carlo Simulation
+% ==============================================================================
+\subsection{Monte Carlo Simulation}
+\label{sec:bd-montecarlo}
+
+\subsubsection{Price Process}
+\label{subsec:bd-price}
+
+Collateral prices follow a Merton jump-diffusion model~\cite{merton1976}:
+\begin{equation}
+\label{eq:jump-diffusion}
+\frac{dp}{p} = \mu\,dt + \sigma\,dW + J\,dN
+\end{equation}
+where $W$ is a Wiener process, $N$ is a Poisson process with intensity $\lambda_J$, and $J \sim \mathcal{N}(\mu_J, \sigma_J^2)$ are i.i.d.\ jump magnitudes. Parameters are calibrated to ETH historical data (Table~\ref{tab:jd-params}).
+
+\begin{table}[htbp]
+\centering
+\caption{Jump-diffusion parameters (ETH calibration)}
+\label{tab:jd-params}
+\small
+\begin{tabularx}{0.85\columnwidth}{@{}>{\raggedright\arraybackslash}X r@{}}
+\toprule
+Parameter & Value \\
+\midrule
+Annual volatility $\sigma$ & 90\% \\
+Jump intensity $\lambda_J$ (jumps/year) & 6.0 \\
+Mean jump $\mu_J$ & $-15\%$ \\
+Jump volatility $\sigma_J$ & 10\% \\
+Drift $\mu$ & compensated \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Simulation Design}
+\label{subsec:bd-sim_design}
+
+\textbf{Resolution.} Paths are generated at hourly resolution (8{,}760 steps per year), matching the oracle refresh cadence. This is a deliberate trade-off: minute-level resolution would require $100\text{K} \times 525\text{K} = 52.5$B data points (${\sim}210$~GB at float32), while hourly resolution requires only 875M points (${\sim}3.5$~GB). Since the oracle can only update hourly, intra-hour price movements do not affect oracle-triggered liquidations.
+
+\textbf{Pool.} Each path initializes 1{,}000 synthetic positions with health factors $H_0 \sim \mathcal{N}(1.5, 0.3)$ truncated at $[1.0, 3.0]$ and uniform unit borrow size.
+
+\textbf{Oracle.} The log-space EMA replicates \texttt{TWAP.sol} semantics exactly, including the one-refresh delay. The oracle processes hourly price snapshots and produces oracle-price-ratio time series.
+
+\textbf{Liquidation.} Two models are implemented: (1)~\emph{full liquidation} via vectorized threshold crossing---for each position, pre-compute the critical oracle price ratio $p_{\text{crit}} = 1/H_0$ and detect the first crossing with \texttt{np.argmax}; (2)~\emph{partial liquidation} with $2^{-e}$ fraction per step (matching the protocol's debt assumption model), simulated step-by-step with optional price impact $k$.
+
+\textbf{Parameters.} Default run: 1{,}000 paths, LTV = 1/3, $\alpha = 0.944$, 1-hour refresh, seed = 42.
+
+\subsubsection{Results}
+\label{subsec:bd-mc-results}
+
+Table~\ref{tab:mc-ltv} presents Monte Carlo results across LTV configurations. At the default 33\% LTV, expected bad debt is 0.00\% of TVL per year---the 200\% over-collateralization ensures the oracle triggers liquidation (at $p_{\text{crit}} = 1/H_0$) well before any shortfall accumulates. Bad debt emerges only at LTV $\geq 67\%$ where the over-collateralization margin is thinner.
+
+\begin{table}[htbp]
+\centering
+\caption{Monte Carlo bad debt metrics by LTV ($\alpha = 0.944$, $N = 1{,}000$ paths)}
+\label{tab:mc-ltv}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r *{4}{>{\centering\arraybackslash}X}@{}}
+\toprule
+LTV & $\mathbb{E}[\text{BD}]$ & VaR(99\%) & CVaR(99\%) & Nonzero \\
+\midrule
+33\% & 0.00\% & 0.00\% & 0.00\% & 0.0\% \\
+50\% & 0.00\% & 0.00\% & 0.00\% & 0.0\% \\
+67\% & 0.00\% & 0.00\% & 0.02\% & 1.3\% \\
+75\% & 0.01\% & 0.32\% & 0.69\% & 10.7\% \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize All values as \% of TVL per year. ``Nonzero'' is the fraction of paths producing any bad debt. 95\% CI on $\mathbb{E}[\text{BD}]$ is $< \pm 0.10\%$ at 1{,}000 paths.
+\end{table}
+
+Table~\ref{tab:mc-alpha} shows the effect of oracle decay rate. At 33\% LTV, all decay rates produce zero bad debt---the over-collateralization margin dominates. Oracle decay becomes relevant only at higher LTV where the liquidation-to-bad-debt gap is narrower.
+
+\begin{table}[htbp]
+\centering
+\caption{Monte Carlo bad debt metrics by oracle decay ($\text{LTV} = 33\%$, $N = 1{,}000$ paths)}
+\label{tab:mc-alpha}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r r *{3}{>{\centering\arraybackslash}X}@{}}
+\toprule
+$\alpha$ & HL & $\mathbb{E}[\text{BD}]$ & VaR(99\%) & CVaR(99\%) \\
+\midrule
+0.891 & 6\,h & 0.00\% & 0.00\% & 0.00\% \\
+0.944 & 12\,h & 0.00\% & 0.00\% & 0.00\% \\
+0.972 & 24\,h & 0.00\% & 0.00\% & 0.00\% \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize HL = half-life in hours. At 33\% LTV, the 200\% over-collateralization absorbs all oracle staleness regardless of decay rate.
+\end{table}
+
+\subsubsection{Bad Debt Distribution}
+\label{subsec:bd-distribution}
+
+Figure~\ref{fig:mc-histogram} shows the full bad debt distribution for the default configuration. All 1{,}000 simulated paths produce exactly zero bad debt, confirming that the 200\% over-collateralization at 33\% LTV fully absorbs oracle staleness. The oracle triggers liquidation at $p_{\text{crit}} = 1/H_0 \approx 0.67$ (33\% price decline), well before the bad-debt threshold at $p = \text{LTV}/H_0 \approx 0.22$ (78\% decline).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/04_mc_histogram_quick.pdf}
+\caption{Bad debt distribution (default configuration: LTV = 33\%, $\alpha = 0.944$). All paths produce zero bad debt: the 200\% over-collateralization ensures liquidation triggers well before any shortfall accumulates.}
+\label{fig:mc-histogram}
+\end{figure}
+
+\subsubsection{Drawdown--Bad Debt Relationship}
+\label{subsec:bd-drawdown}
+
+Figure~\ref{fig:drawdown-bd} confirms that at 33\% LTV, even paths with extreme drawdowns ($>$90\%) produce zero bad debt. Bad debt requires the \emph{true} price to drop below $\text{LTV}/H_0 \approx 0.22$ \emph{and} the oracle to fail to trigger liquidation in time---the corrected liquidation threshold ($1/H_0 \approx 0.67$) catches positions long before this point.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/04b_drawdown_vs_bd_quick.pdf}
+\caption{Maximum drawdown vs.\ bad debt per simulated path (LTV = 33\%, $\alpha = 0.944$). At 33\% LTV all paths produce zero bad debt regardless of drawdown severity, confirming the analytical bound.}
+\label{fig:drawdown-bd}
+\end{figure}
+
+\subsubsection{Liquidation Delay Distribution}
+\label{subsec:bd-liq-delay}
+
+For paths that produce liquidations, the delay between a position becoming truly underwater ($H_{\text{true}} < 1$) and the oracle triggering liquidation ($H_{\text{oracle}} < 1$) has the following characteristics (baseline configuration, 1{,}000 paths):
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Median delay}: 30~hours
+\item \textbf{Mean delay}: $>$218~hours (skewed by long tails)
+\item \textbf{99th percentile}: ${\sim}$3{,}800~hours
+\end{itemize}
+
+The heavy right tail (Figure~\ref{fig:liq-delay}) reflects paths where positions hover near the liquidation boundary during gradual declines, maintaining phantom-healthy status for extended periods.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/04c_time_to_liquidation_quick.pdf}
+\caption{Distribution of oracle-induced liquidation delay (hours from true underwater to oracle-triggered liquidation). The distribution is extremely heavy-tailed: median delay is 30\,h but the mean exceeds 218\,h due to paths where positions hover near the liquidation boundary.}
+\label{fig:liq-delay}
+\end{figure}
+
+% ==============================================================================
+% 4. Analytical Bound Derivation
+% ==============================================================================
+\subsection{Analytical Bound}
+\label{sec:bd-bound}
+
+\subsubsection{Instant Liquidation Baseline}
+\label{subsec:bd-instant}
+
+As a baseline, consider bad debt under instant liquidation (no oracle delay). A position with initial health $H_0$ experiencing crash fraction $\delta$ has:
+\begin{equation}
+\text{BD}_{\text{inst}} = \text{borrow} \cdot \max\!\left(0,\; 1 - \frac{H_0(1{-}\delta)}{\text{LTV}}\right)
+\end{equation}
+
+Positions are underwater when $H_0 < 1/(1{-}\delta)$, and produce bad debt when $H_0(1{-}\delta) < \text{LTV}$ (shortfall exceeds collateral value at true price). Integrating over the health distribution $H_0 \sim \text{TruncNorm}(1.5, 0.3, [1.0, 3.0])$ and weighting by TVL contribution:
+\begin{equation}
+\label{eq:bd-instant}
+\frac{\mathbb{E}[\text{BD}_{\text{inst}}]}{\text{TVL}} = \frac{\int_{1}^{H_{\text{crit}}} \max\!\left(0,\; 1 - \frac{H(1{-}\delta)}{\text{LTV}}\right) H \cdot f(H)\,dH}{\mathbb{E}[H]}
+\end{equation}
+where $H_{\text{crit}} = 1/(1{-}\delta)$ and $f(H)$ is the truncated normal PDF.
+
+\subsubsection{Oracle Delay Penalty}
+\label{subsec:bd-delay}
+
+The additional bad debt from oracle staleness arises when price continues declining during the phantom-healthy window. For a position with phantom window $W$ refreshes and hourly volatility $\sigma_h = \sigma/\sqrt{8760}$, the expected additional decline is:
+\begin{equation}
+\label{eq:additional-decline}
+\Delta_W = W \cdot \sigma_h \approx W \cdot \frac{0.90}{\sqrt{8760}} \approx 0.0096 \cdot W
+\end{equation}
+
+\subsubsection{Conservative Upper Bound}
+\label{subsec:bd-conservative}
+
+\begin{theorem}[Bad Debt Upper Bound]
+\label{thm:bd-bound}
+For a step crash of fraction $\delta$, oracle decay $\alpha$, and effective LTV, the maximum bad debt as a fraction of TVL is bounded by:
+\begin{equation}
+\label{eq:bd-bound}
+\text{BD}_{\max}(\delta, \alpha, \text{LTV}) \leq \text{BD}_{\text{inst}} \cdot \left(1 + \frac{W_{\max} \cdot \sigma_h}{\delta}\right)
+\end{equation}
+where $W_{\max}$ is the phantom window for the marginal underwater position (health just below $1/(1{-}\delta)$) and $\sigma_h \approx 0.96\%$/hour is the ETH hourly volatility.
+\end{theorem}
+
+\begin{proof}
+The bound follows from three observations: (1)~all positions that are underwater under instant liquidation are also underwater under delayed liquidation, establishing $\text{BD}_{\text{inst}}$ as a lower bound; (2)~positions with longer phantom windows experience additional price movement of order $W \cdot \sigma_h$ during the delay; (3)~the marginal underwater position (highest $H_0$ still underwater) has the longest phantom window $W_{\max}$.
+
+The multiplicative penalty $W_{\max} \cdot \sigma_h / \delta$ represents the worst-case fractional increase in bad debt due to continued decline during the phantom window, normalized by the initial crash magnitude. This is conservative because: (a)~it assumes all positions experience $W_{\max}$ rather than their individual (shorter) windows, and (b)~it assumes continued decline at full volatility rather than zero-drift random walk.
+\end{proof}
+
+Table~\ref{tab:bound} presents the bound for selected parameter combinations.
+
+\begin{table}[htbp]
+\centering
+\caption{Analytical bad debt bound (\% of TVL)}
+\label{tab:bound}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r r >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X@{}}
+\toprule
+Crash & LTV & BD\textsubscript{inst} & $\alpha{=}0.944$ & $\alpha{=}0.891$ \\
+\midrule
+30\% & 33\% & 0.00 & 0.00 & 0.00 \\
+30\% & 75\% & 0.06 & 0.20 & 0.13 \\
+40\% & 67\% & 0.16 & 0.46 & 0.32 \\
+40\% & 75\% & 0.97 & 2.79 & 1.90 \\
+50\% & 33\% & 0.00 & 0.00 & 0.00 \\
+50\% & 50\% & 0.00 & 0.00 & 0.00 \\
+50\% & 67\% & 1.90 & 5.08 & 3.51 \\
+50\% & 75\% & 4.98 & 13.32 & 9.20 \\
+70\% & 33\% & 0.16 & 0.26 & 0.21 \\
+70\% & 50\% & 9.67 & 15.52 & 12.73 \\
+70\% & 67\% & 29.00 & 46.52 & 38.15 \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize BD\textsubscript{inst} is the baseline under instant liquidation. Bounds are computed with ETH hourly volatility $\sigma_h \approx 0.96\%$.
+\end{table}
+
+% ==============================================================================
+% 5. Safe Operating Region
+% ==============================================================================
+\subsection{Safe Operating Region}
+\label{sec:bd-safety}
+
+\subsubsection{Safety Criterion}
+\label{subsec:bd-criterion}
+
+We define a parameter configuration $(\alpha, \text{LTV})$ as \emph{safe} if the analytical bad debt bound satisfies $\text{BD}_{\max} < 5\%$ of TVL for crash magnitudes up to 50\%. This corresponds to Acceptance Criterion~4 from the specification.
+
+\subsubsection{Safe Configurations}
+\label{subsec:bd-safe-configs}
+
+Table~\ref{tab:safe} lists all configurations satisfying the safety criterion.
+
+\begin{table}[htbp]
+\centering
+\caption{Safe parameter configurations (BD bound $< 5\%$ for 50\% crash)}
+\label{tab:safe}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}r r >{\centering\arraybackslash}X r@{}}
+\toprule
+$\alpha$ & Half-Life & LTV & BD Bound \\
+\midrule
+0.891 & 6\,h & 33\% & 0.00\% \\
+0.891 & 6\,h & 50\% & 0.00\% \\
+0.891 & 6\,h & 67\% & 3.51\% \\
+0.944 & 12\,h & 33\% & 0.00\% \\
+0.944 & 12\,h & 50\% & 0.00\% \\
+0.972 & 24\,h & 33\% & 0.00\% \\
+0.972 & 24\,h & 50\% & 0.00\% \\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+\par\raggedright\scriptsize The default configuration ($\alpha = 0.944$, LTV = 33\%) produces zero bounded bad debt for any crash up to 50\%.
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{sims/sim_debt/output/08_safe_region.pdf}
+\caption{Safe operating region in $(\alpha, \text{LTV}, \text{crash})$ space. The surface separates configurations where $\text{BD}_{\max} < 5\%$ (below) from those exceeding the threshold (above).}
+\label{fig:safe-region}
+\end{figure}
+
+\subsubsection{Key Observations}
+\label{subsec:bd-observations}
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{33\% LTV is zero-bad-debt for $\leq$50\% crashes.} At the default 33\% LTV, positions require a $>$50\% crash before any become underwater ($H_{\text{crit}} = 1/(1{-}\delta) > H_{\min} = 1.0$ requires $\delta > 0$, but $H_0 \cdot (1{-}\delta) < \text{LTV}$ requires $\delta > 1 - \text{LTV}/H_0$). With 200\% over-collateralization, even a 50\% crash leaves the average position ($H_0 = 1.5$) with $H_{\text{true}} = 0.75 > \text{LTV} = 0.33$: still solvent.
+
+\item \textbf{LTV is the dominant risk parameter.} Bad debt is zero for LTV $\leq 50\%$ and emerges only at LTV $\geq 67\%$, reaching $\mathbb{E}[\text{BD}] = 0.01\%$ at 75\% LTV (Table~\ref{tab:mc-ltv}). The oracle decay rate has no observable effect at 33\% LTV (Table~\ref{tab:mc-alpha}).
+
+\item \textbf{The 200\% buffer fully absorbs oracle staleness.} The oracle triggers liquidation at $p_{\text{crit}} = 1/H_0 \approx 0.67$ (33\% price decline), while bad debt requires the true price to reach $\text{LTV}/H_0 \approx 0.22$ (78\% decline). This 45-percentage-point gap renders oracle delay harmless at the default LTV.
+
+\item \textbf{Tail risk is negligible at default LTV.} At 33\% LTV, all risk metrics (E[BD], VaR, CVaR) are zero. At 75\% LTV, CVaR(99\%) reaches 0.69\% of TVL.
+\end{enumerate}
+
+% ==============================================================================
+% 6. Sensitivity Analysis
+% ==============================================================================
+\subsection{Sensitivity Analysis}
+\label{sec:bd-sensitivity}
+
+\subsubsection{Parameter Rankings}
+\label{subsec:bd-tornado}
+
+The following parameters are ranked by their impact on expected bad debt (based on tornado diagram analysis over the MC sweep):
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{LTV (weight ratio)} --- governance-controlled, dominant effect. Moving from 33\% to 75\% increases $\mathbb{E}[\text{BD}]$ from 0.00\% to 0.01\%, and CVaR(99\%) from 0.00\% to 0.69\%.
+
+\item \textbf{Jump intensity $\lambda_J$} --- exogenous market condition. Higher jump frequency (12 vs.\ 4 per year) increases tail risk by amplifying crash-like events.
+
+\item \textbf{Oracle decay $\alpha$} --- secondary effect. At 33\% LTV, all decay rates produce zero bad debt. At higher LTV, faster decay reduces phantom-healthy windows, but the effect is dominated by the LTV choice.
+
+\item \textbf{Refresh interval} --- operational parameter. Faster refreshes (15\,min vs.\ 2\,h) reduce the initial blind period but have diminishing returns once below the half-life.
+
+\item \textbf{Lock fraction $\phi$} --- emergent, not directly controlled. Locks reduce cascade-induced bad debt but have minimal effect on oracle-staleness-driven bad debt.
+
+\item \textbf{Price impact $k$} --- exogenous. Increases bad debt during liquidation cascades but does not affect oracle staleness.
+\end{enumerate}
+
+\subsubsection{Interaction Effects}
+\label{subsec:bd-interactions}
+
+Two notable interaction effects emerge from pairwise analysis:
+
+\textbf{$\alpha \times$ LTV.} Higher LTV \emph{amplifies} the staleness problem non-linearly. At 33\% LTV, changing $\alpha$ from 0.891 to 0.972 has zero observable effect; at 75\% LTV, the same change measurably increases bad debt. The over-collateralization buffer acts as a threshold: below a critical LTV, oracle delay is completely absorbed.
+
+\textbf{$\alpha \times$ Refresh interval.} Diminishing returns to faster refreshes when $\alpha$ is already responsive. At $\alpha = 0.891$ (6\,h HL), reducing refresh interval from 2\,h to 15\,min has minimal effect because the EMA already converges rapidly.
+
+% ==============================================================================
+% 7. Partial Liquidation Model
+% ==============================================================================
+\subsection{Partial Liquidation}
+\label{sec:bd-partial-liq}
+
+The protocol uses a $2^{-e}$ partial liquidation model: each liquidation step transfers fraction $(1 - 2^{-e})$ of the position. With the default $e = 1$, 50\% of a position is cleared per step.
+
+During continued price declines, partial liquidation can produce \emph{more} bad debt than instant full liquidation, because remaining position fractions face increasingly adverse prices. The price impact coefficient $k$ further increases bad debt by modeling the market impact of forced liquidation sales:
+\begin{equation}
+p_{\text{effective}} = p_{\text{true}} \cdot (1 - k)
+\end{equation}
+
+Monte Carlo tests confirm that price impact $k = 0.10$ (10\% haircut) measurably increases bad debt relative to $k = 0$ in declining markets. However, the effect is secondary to the LTV choice and primarily affects already-distressed positions.
+
+% ==============================================================================
+% 8. Cross-Validation
+% ==============================================================================
+\subsection{Cross-Validation}
+\label{sec:bd-validation}
+
+\subsubsection{Oracle Model vs.\ Solidity}
+\label{subsec:bd-oracle-validation}
+
+The Python oracle model is cross-validated against three Foundry scenario tests from \texttt{test/Oracle/OracleScenario.t.sol}:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{S01 (Benign Motion)}: 24 refreshes with $\pm$5\% oscillations. Mid drift $< 10\%$. \checkmark
+\item \textbf{S02 (Sudden Drift)}: 2$\times$ price jump. After 1st refresh: $\delta < 3\%$; after 2nd: $\delta < 15\%$; after 14th: $15\% < \delta < 70\%$. \checkmark
+\item \textbf{S04 (Sudden Reversal)}: 2$\times$ spike then revert. Residual $< 5\%$ (Solidity cadence) or $< 7\%$ (Python all-tick cadence). \checkmark
+\end{itemize}
+
+\noindent The discrepancy in S04 arises from Solidity's \texttt{delayed()} modifier using strict~$>$ comparison, causing only every other hourly tick to produce a Refresh event (alternating Pending/Refresh). Both models produce correct results for their respective refresh cadences.
+
+\subsubsection{Phantom Window Verification}
+\label{subsec:bd-phantom-validation}
+
+Analytical phantom window computations (Section~\ref{subsec:bd-phantom}) are verified against step-by-step OracleModel simulations for 4 representative (crash, health) pairs. All match within $\pm 1$ refresh.
+
+\subsubsection{Bound Conservatism}
+\label{subsec:bd-bound-validation}
+
+The analytical bound (Theorem~\ref{thm:bd-bound}) is verified to exceed all MC simulation results across all tested parameter combinations. The \texttt{check-bound} CLI command automates this check for each (LTV, $\alpha$, crash) triple in the MC results.
+
+% ==============================================================================
+% 9. Recommendations
+% ==============================================================================
+\subsection{Deployment Recommendations}
+\label{sec:bd-recommendations}
+
+Based on the analysis, we recommend the following parameter configurations for deployment:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Default configuration} ($\alpha = 0.944$, LTV = 33\%): Zero bounded bad debt for crashes up to 50\%. This is the recommended production setting, balancing oracle manipulation resistance with bad debt containment.
+
+\item \textbf{Higher capital efficiency} ($\alpha = 0.891$, LTV = 50\%): Zero bounded bad debt for 50\% crashes. Requires reducing half-life to 6~hours, which weakens manipulation resistance (20~hours sustained manipulation for 90\% deviation).
+
+\item \textbf{Maximum responsiveness} ($\alpha = 0.891$, LTV = 67\%): Bounded bad debt of 3.51\% for 50\% crash. Suitable only for highly liquid pairs where manipulation risk is low and faster oracle response is prioritized.
+\end{enumerate}
+
+\textbf{Configurations to avoid:}
+\begin{itemize}[leftmargin=*]
+\item LTV $\geq 75\%$ at any $\alpha$: Bounded bad debt exceeds 9\% for 50\% crashes.
+\item $\alpha = 0.972$ (24\,h HL) with LTV $> 50\%$: Excessive staleness compounds with thin over-collateralization margin.
+\end{itemize}
+
+% ==============================================================================
+% 10. Conclusion
+% ==============================================================================
+\subsection{Conclusion}
+\label{sec:bd-conclusion}
+
+XPower Banq's log-space TWAP oracle creates a quantifiable trade-off between manipulation resistance and bad-debt risk. The 200\% over-collateralization buffer at the default 33\% LTV fully absorbs oracle staleness: Monte Carlo simulation produces zero bad debt across all 1{,}000 simulated paths, and the analytical bound confirms zero bad debt for crashes up to 50\%. Bad debt emerges only at LTV $\geq 67\%$, reaching $\mathbb{E}[\text{BD}] = 0.01\%$ at 75\% LTV.
+
+The mechanism underlying this robustness is the 45-percentage-point gap between the oracle's liquidation trigger and the bad-debt threshold. At 33\% LTV with typical $H_0 = 1.5$, the oracle triggers liquidation when the reported price drops to $1/H_0 \approx 0.67$ (a~33\% decline), whereas bad debt requires the true price to reach $\text{LTV}/H_0 \approx 0.22$ (a~78\% decline). Even with phantom-healthy windows of 17--30~hours for 40--50\% crashes (Table~\ref{tab:phantom}), positions are liquidated long before the true price can traverse this gap. Only when the LTV approaches $1/H_0$---collapsing the gap---does oracle staleness translate into realised bad debt.
+
+The primary risk lever is the LTV parameter, not the oracle decay rate. Sensitivity analysis (\S\ref{sec:bd-sensitivity}) ranks the six model parameters by impact: LTV dominates, followed by exogenous jump intensity $\lambda_J$, with oracle decay $\alpha$ a distant third. At 33\% LTV, all three tested decay rates ($\alpha \in \{0.891, 0.944, 0.972\}$) produce identical zero bad debt (Table~\ref{tab:mc-alpha}), confirming that the over-collateralization buffer acts as a binary absorber below a critical LTV. Above that threshold, the interaction between $\alpha$ and LTV becomes non-linear: increasing LTV from 33\% to 75\% amplifies the staleness penalty from $0\times$ to $1.67\times$ the instant-liquidation baseline.
+
+Governance should therefore prioritize LTV conservatism over oracle responsiveness. The analytical bound $\text{BD}_{\max}(\delta, \alpha, \text{LTV}) \leq \text{BD}_{\text{inst}} \cdot (1 + W_{\max} \cdot \sigma_h / \delta)$ (Theorem~\ref{thm:bd-bound}) provides a closed-form, governance-usable formula for evaluating parameter changes against bad-debt tolerance. Combined with the safe-operating-region criterion ($\text{BD}_{\max} < 5\%$ of TVL for $\delta \leq 50\%$), this bound delineates five safe $(\alpha, \text{LTV})$ configurations (Table~\ref{tab:safe}), all with LTV $\leq 67\%$.
+
+\textbf{Limitations.} The analysis makes several simplifying assumptions. First, positions are modelled with a static health distribution $H_0 \sim \mathcal{N}(1.5, 0.3)$ rather than endogenous dynamics from supply/borrow inflows. Second, oracle refreshes are assumed to occur at exact hourly intervals, whereas the \texttt{delayed()} modifier's strict-$>$ comparison can cause alternating Pending/Refresh patterns that effectively double the refresh interval (\S\ref{subsec:bd-oracle-validation}). Third, liquidation cascades and their feedback effects on market prices are modelled only via the price-impact coefficient $k$, not through an order-book simulation. Fourth, correlated multi-asset crashes are not considered.
+
+
+
+% ==============================================================================
+% PART III --- Glossary
+% ==============================================================================
+\clearpage
+\onecolumn
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}
+  {\fontsize{36}{42}\selectfont\bfseries Part III}\\[1.5em]
+  {\LARGE References \& Glossary}\\[1em]
+  {\large\color{codegray} Bibliography and Comprehensive Terminology}
+\end{center}
+\vspace*{\fill}
+\clearpage
+\twocolumn
+
+% ==============================================================================
+% References
+% ==============================================================================
+\begin{thebibliography}{99}
+
+% --- Main paper back-reference ---
+
+\bibitem{wp}
+Karun The Ritch.
+\newblock XPower Banq: A Permissionless DeFi Lending Protocol with Lethargic Governance and Beta-Distributed Position Caps.
+\newblock \emph{Whitepaper}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+% --- References cited in appendices ---
+
+\bibitem{mackinga2022}
+Mackinga, T., Nadahalli, T., and Wattenhofer, R.
+\newblock TWAP Oracle Attacks: Easier Done than Said?
+\newblock \emph{IEEE International Conference on Blockchain and Cryptocurrency}, 2022.
+
+\bibitem{merton1976}
+Merton, R.C.
+\newblock Option Pricing When Underlying Stock Returns Are Discontinuous.
+\newblock \emph{Journal of Financial Economics}, 3(1--2):125--144, 1976.
+
+\end{thebibliography}
+
+% ==============================================================================
+% Glossary
+% ==============================================================================
+\section*{Glossary}
+\label{apx:glossary}
+\addcontentsline{toc}{section}{Glossary}
+
+\noindent This glossary consolidates all terminology from the main paper~\cite{wp} and Technical Appendices A--G. Entries marked with a dagger~($\dagger$) are specific to the bad-debt risk analysis (Appendix~G).
+
+\begin{description}[style=nextline, leftmargin=2.5em, labelindent=0em, font=\normalfont\bfseries]
+
+% === A ===
+
+\item[Acma] Access manager---wrapper around OpenZeppelin's \texttt{AccessManager}; manages three-tier roles (executor, admin, guard).
+
+\item[$A(n)$\,$\dagger$] Absorption fraction---the share of the log-space deviation absorbed after $n$ oracle refreshes: $A(n) = 1 - \alpha^{n-1}$ for $n \geq 2$, with $A(0) = A(1) = 0$ due to the one-refresh delay.
+
+\item[$\alpha$\,$\dagger$] EMA decay parameter of the log-space TWAP oracle. Governs tracking speed: $\alpha = 0.5^{1/\text{HL}}$ where HL is the half-life in refreshes. Default $\alpha \approx 0.944$ (12-hour half-life).
+
+\item[AMM] Automated Market Maker---decentralized exchange architecture using liquidity pools and mathematical formulas for price discovery.
+
+\item[APY Differential] Difference in annual percentage yield between locked and unlocked positions; with spread $s$, supplier differential is $\Delta r \approx 0.09 \times r_{\text{base}}$.
+
+\item[Asymptotic Transition] Parameter change mechanism where values approach targets gradually via time-weighted mean rather than discrete jumps. See Lethargic Governance.
+
+% === B ===
+
+\item[Bad Debt] Uncollectable debt arising when a position's collateral value falls below its debt value; protocol absorbs the loss. Quantified in Appendix~G.
+
+\item[$\text{BD}_{\text{inst}}$\,$\dagger$] Bad debt under instant (zero-delay) liquidation. The baseline shortfall when a position's true collateral value $H_0(1{-}\delta)$ falls below LTV.
+
+\item[$\text{BD}_{\max}$\,$\dagger$] Conservative upper bound on bad debt (Theorem~\ref{thm:bd-bound}), incorporating the oracle delay penalty: $\text{BD}_{\max} \leq \text{BD}_{\text{inst}} \cdot (1 + W_{\max}\,\sigma_h / \delta)$.
+
+\item[Beta Cap] Position limit following \mbox{$12\lambda(1-\lambda)^2$} distribution where $\lambda$ is the user's fraction of total supply; peaks at $\lambda = 1/3$ and vanishes at boundaries.
+
+\item[Bid/Ask] Price quotes for selling (bid) vs.\ buying (ask) an asset; spread provides manipulation resistance.
+
+\item[Block Stuffing] Attack filling blocks with transactions to delay or censor others; prevented by PoW requirements.
+
+\item[Breakeven Period] Minimum holding period $T^*$ for lock adoption to be profitable; approximately $T^* \approx D / \Delta r$ where $D$ is secondary market discount and $\Delta r$ is APY differential.
+
+\item[Borrow Position] ERC20 token representing debt obligation; uses inverted transfer semantics where \texttt{transfer} pulls debt.
+
+% === C ===
+
+\item[Calculator] Library providing overflow-safe $\log_2$ and $\exp_2$ operations for the oracle pipeline, wrapping PRBMath's UD60x18 functions. Defines the bias constant $\texttt{LOG2\_ONE} = \log_2(10^{18}) \approx 59.79$, used to convert between raw \texttt{uint256} values and UD60x18 fixed-point representation in the paired functions \texttt{Log2()}/\texttt{Exp2()}.
+
+\item[Cap Floor] Minimum position cap ensuring users can enter even when $\lambda \to 0$; prevents cold start problem.
+
+\item[Capital Efficiency] Borrowing power per unit of collateral; higher LTV ratios provide greater capital efficiency.
+
+\item[Cascade Amplification] Ratio of actual liquidations to initial shock-induced liquidations; measures feedback loop severity. Simulated in Appendix~E.
+
+\item[Circuit Breaker] Mechanism halting cascading failures; locked positions act as circuit breakers during market stress.
+
+\item[Cold Start] Problem where first depositor faces zero or minimal cap due to $\lambda \to 0$; solved by cap floor mechanism.
+
+\item[Collateral] Assets deposited to back borrowed positions; must exceed borrow value by the over-collateralization ratio.
+
+\item[Constant Product] AMM pricing formula ($x \cdot y = k$) used to derive bid/ask quotes from reserve balances.
+
+\item[Coordination Game] Strategic interaction where player payoffs depend on aggregate choices; lock adoption exhibits coordination dynamics where seniority value decreases as adoption increases.
+
+\item[$\text{CVaR}(99\%)$\,$\dagger$] Conditional Value-at-Risk at the 99th percentile---the expected bad debt in the worst 1\% of simulated paths.
+
+% === D ===
+
+\item[Debt Assumption] Liquidation model where the liquidator assumes the victim's debt rather than repaying it; enables capital-efficient liquidation without requiring liquid capital.
+
+\item[Decay Factor] EMA smoothing parameter $\alpha$; controls how quickly older price observations lose influence. See also Half-Life.
+
+\item[$\delta$\,$\dagger$] Crash fraction. An instantaneous price drop from $p_0$ to $p_0(1{-}\delta)$; e.g.\ $\delta = 0.50$ is a 50\% crash.
+
+\item[Difficulty] PoW puzzle hardness parameter; governance-adjustable per operation type to tune spam resistance.
+
+\item[Dual Approval] Transfer model requiring approval from both sender and receiver; used for borrow position transfers.
+
+% === E ===
+
+\item[Enlisting] Governance-approved process to add new tokens to a pool; subject to time delays for existing feed modifications.
+
+\item[EMA] Exponential Moving Average---smoothing technique giving exponentially decreasing weight to older observations. Applied in log-space for TWAP oracle.
+
+\item[Entry Fee] Deposit fee charged when supplying assets to a vault; accrues to existing depositors.
+
+\item[ERC20] Ethereum token standard defining transfer, approve, and balance interfaces; basis for position tokens.
+
+\item[ERC4626] Tokenized vault standard extending ERC20 with deposit/withdraw mechanics; basis for XPower Banq vaults.
+
+\item[Exit Fee] Withdrawal fee charged when redeeming assets from a vault; discourages short-term liquidity cycling.
+
+% === F ===
+
+\item[Fixed Token List] Architecture requiring predetermined token sets per pool; ensures predictable collateral requirements.
+
+\item[Flash Loan] Uncollateralized loan that must be repaid within the same transaction.
+
+\item[Formal Verification] Mathematical proof of smart contract correctness; provides stronger guarantees than testing alone.
+
+\item[Front-running] Inserting a transaction before a known pending transaction to profit from its price impact.
+
+% === G ===
+
+\item[Gas] Ethereum transaction execution cost; measured in gas units multiplied by gas price.
+
+\item[Geomean Spread] Bidirectional geometric mean of relative spreads from forward and reverse AMM queries; stored in log-space as $\log_2(1 + s_{\text{geo}})$. Provides symmetric, manipulation-resistant spread estimation.
+
+\item[Governance Cycle] Single parameter change period with minimum duration (e.g., monthly); bounds rate of protocol changes.
+
+% === H ===
+
+\item[$H_0$\,$\dagger$] Initial health factor of a position: $H_0 = (\text{supply} \times w_s) / (\text{borrow} \times w_b)$. Liquidation triggers when the oracle-observed health $H_{\text{oracle}} < 1$.
+
+\item[Half-Life] Time for EMA weight to decay to 50\%; determines TWAP responsiveness to new price observations. \cite[\S C]{wp} tabulates decay factors.
+
+\item[Hash Rate] Computational power for PoW puzzle solving, measured in hashes per second; determines solve time.
+
+\item[Health Check] Validation performed after operations ensuring health factor $H \geq 1$; reverts if violated.
+
+\item[Health Factor] Ratio of weighted supply value to weighted borrow value: $H = \sum w_s V_s / \sum w_b V_b$. Liquidation occurs when $H < 1$.
+
+\item[Holder-Count Scaling] Sybil resistance mechanism using the $\sqrt{n+2}$ divisor; creating accounts increases $n$, reducing per-account cap gains.
+
+\item[Holder Floor] Minimum holder count $n_{\min}$ used in cap divisor; Sybil resistance only activates when real holders exceed this threshold.
+
+% === I ===
+
+\item[Index] Accumulated interest multiplier in ray precision (27 decimals); user balances scale with index ratio.
+
+\item[Initial Lock Period] Mandatory delay before first parameter change after deployment; prevents immediate manipulation.
+
+\item[Integrator] Library computing $\Delta$-stamp weighted arithmetic means over (timestamp, value) tuples; accumulates area $\sum v_i \cdot \Delta t_i$ and divides by elapsed time. Used by the \texttt{Parameterized} base contract to implement asymptotic parameter transitions in lethargic governance (\S6 of~\cite{wp}).
+
+\item[Interest Rate Model] Utilization-based formula determining borrow/supply APY; slope increases sharply above kink. Formalized in Appendix~A.
+
+\item[Inverted Transfer] Borrow position transfer semantics where \texttt{transfer(from, amount)} pulls debt FROM the first parameter rather than pushing to it. See \S4.2 of~\cite{wp}.
+
+\item[Iteration Cap] Maximum capacity gain per governance-defined period (e.g., per week); bounds accumulation rate. Simulated in Appendix~D.
+
+% === K ===
+
+\item[Kink] Utilization threshold (e.g., 90\%) where interest rate slope increases; incentivizes liquidity retention.
+
+% === L ===
+
+\item[Lambda ($\lambda$)] Balance fraction $B/S$; user's holdings divided by total supply.
+
+\item[Large Holder] Account holding $\geq 1$ full token unit; tracked for cap calculations.
+
+\item[Leading Zeros] PoW validation metric counting zero nibbles at start of hash; determines if difficulty threshold is met.
+
+\item[Lethargic Governance] Governance model with time-delayed, bounded parameter transitions. Values approach targets asymptotically, bounded to $0.5\times$--$2\times$ per governance cycle. See \cite[\S A]{wp}.
+
+\item[Liquidation] Forced closure of an unhealthy position ($H < 1$); XPower Banq uses debt assumption model.
+
+\item[Liquidation Cascade] Destructive feedback loop where forced sales depress prices, triggering further liquidations. Modeled in Appendix~E.
+
+\item[Liquidation Seniority] Priority in liquidation order; locked positions gain \emph{de facto} seniority because liquidators prefer unlocked positions for immediate liquidity.
+
+\item[Liquidity Buffer] Reserve of unutilized assets available for withdrawals; maintained via optimal utilization targeting.
+
+\item[Lock Adoption] Aggregate fraction $\bar{\rho}$ of positions that are locked across the protocol; equilibrium adoption varies with utilization regime. Analyzed in Appendix~C.
+
+\item[Lock Bonus] Additional interest earned by locked suppliers; percentage of interest accrued, bounded by spread.
+
+\item[Lock Malus] Interest \emph{reduction} for locked borrowers; percentage of interest owed, bounded by spread.
+
+\item[Lock Ratio ($\rho$)] Fraction of position that is locked; $\rho = \text{lock}/\text{balance} \in [0, 1]$.
+
+\item[Log-Normal Distribution] Statistical distribution where logarithm is normally distributed; used to model position sizes in simulations (Appendices~D, E).
+
+\item[Log-Space Oracle] Oracle architecture storing prices as $\log_2(\text{price})$ and spreads as $\log_2(1 + s)$; enables EMA smoothing as geometric-mean temporal averaging.
+
+\item[LTV] Loan-to-Value ratio---maximum borrowing power as fraction of collateral value; default $w_s/w_b = 85/255 \approx 33\%$.
+
+% === M ===
+
+\item[Market Depth] Total volume that can be traded before significantly moving price; inverse of market impact coefficient.
+
+\item[Market Impact] Price change from selling assets; coefficient $k$ relates volume to price depression.
+
+\item[Market Impact Coefficient] Constant $k$ in linear price impact model $\Delta p = k \cdot V$; relates sell volume to price depression. Used in cascade simulation (Appendix~E).
+
+\item[Memory Decay] Weight $\lambda^n$ retained by historical price observations in EMA after $n$ refresh periods; after half-life $h$ periods, weight decays to 50\%.
+
+\item[Mempool] Transaction waiting area before block inclusion; PoW prevents flooding attacks against mempool.
+
+\item[MEV] Maximal Extractable Value---profit available from transaction ordering, insertion, or censorship.
+
+\item[Monte Carlo Simulation] Randomized numerical method using many simulated paths to estimate statistical distributions; used for bad-debt risk quantification (Appendix~G) and TWAP analysis (Appendix~F).
+
+\item[Multiplicative Bounds] Constraint limiting parameter changes to $0.5\times$--$2\times$ per governance cycle; prevents rapid manipulation.
+
+% === N ===
+
+\item[Nash Equilibrium] Stable strategic state where no player can improve their payoff by unilaterally changing strategy; lock adoption exhibits utilization-dependent equilibria. Analyzed in Appendix~C.
+
+\item[Nonce] Random value in PoW puzzle; combined with transaction data must hash below difficulty target.
+
+% === O ===
+
+\item[Observation Window] Time available for detecting suspicious activity during gradual capacity accumulation; enabled by iteration caps.
+
+\item[Optimal Utilization] Target utilization $U^*$ (e.g., 90\%) where interest rate curve has its kink; balances efficiency and liquidity.
+
+\item[Oracle Aggregation] Combining prices from multiple feeds (TraderJoe, Chainlink) using log-space EMA smoothing with bidirectional geomean spread computation.
+
+\item[Over-collateralization] Requirement that collateral value exceed borrow value; enforced via health factor $H > 1$.
+
+% === P ===
+
+\item[Partial Liquidation] Liquidation of $2^{-e}$ fraction of positions rather than full liquidation.
+
+\item[$p_{\text{crit}}$\,$\dagger$] Critical oracle price ratio that triggers liquidation: $p_{\text{crit}} = 1 / H_0$. The oracle fires when $\hat{p}(n)/p_0 < p_{\text{crit}}$.
+
+\item[Phantom-healthy\,$\dagger$] A position state where the oracle reports $H_{\text{oracle}} \geq 1$ (solvent) but the true health $H_{\text{true}} < 1$ (underwater). Arises from oracle staleness during crashes (Definition~\ref{def:phantom}).
+
+\item[Pool] Main lending/borrowing contract managing supply, borrow, settle, and redeem operations with health checks.
+
+\item[Pool-to-Depth Ratio] Pool size as fraction of market depth; determines cascade severity under price shocks.
+
+\item[Position Lock] Fraction $\phi$ of a position restricted from redemption or sale; prevents liquidation cascades.
+
+\item[Position Transfer] Movement of supply or borrow position tokens between accounts. Supply uses standard ERC20 push; borrow uses inverted pull semantics. Formalized in \S4.2 of~\cite{wp}.
+
+\item[PoW] Proof-of-Work---computational puzzle required for certain operations to prevent spam.
+
+\item[Price Feed] External data source providing asset prices; XPower Banq supports TraderJoe and Chainlink feeds.
+
+\item[Price Shock] Sudden price change used to test TWAP responsiveness; EMA smoothing dampens shock impact based on half-life configuration.
+
+\item[Principal] Base position amount before interest accrual; multiplied by index ratio to get current balance.
+
+\item[Protocol Margin] Revenue retained by protocol from interest spread; $M(\bar{\rho}) = 2s(1-\bar{\rho})$ where $s$ is spread and $\bar{\rho}$ is lock adoption rate.
+
+\item[Protocol Parameters] Governable constants (weights, decay, spread, rates, caps) that control protocol behavior; each transitions lethargically. Enumerated in \cite[\S A]{wp}.
+
+% === Q ===
+
+\item[Quote] Log-space price representation struct with three fields: \texttt{mid} ($\log_2(\text{price} \times 10^{18})$, biased by \texttt{LOG2\_ONE}), \texttt{rel} ($\log_2(1 + s_{\text{geo}})$ where $s_{\text{geo}}$ is the bidirectional geomean spread), and \texttt{utc} (timestamp). Replaces linear bid/ask pairs with a compact log-space encoding suitable for EMA smoothing.
+
+% === R ===
+
+\item[Rate Limit] Token-bucket mechanism bounding operation frequency; configured per pool with capacity and regeneration rate.
+
+\item[Ray] Fixed-point representation with 27 decimal places ($10^{27}$).
+
+\item[Reentrancy Guard] Protection preventing a contract from being called recursively during execution; uses transient storage.
+
+\item[Reindex] Interest compounding mechanism that updates the global index $I_{\text{ray}}$ and snapshots per-user indices. User balance equals $\text{principal} \times I_{\text{current}} / I_{\text{user}}$. The functions \texttt{\_reindexMore} and \texttt{\_reindexLess} apply lock bonus/malus proportionally during position changes.
+
+\item[Reserves] Token balances held in AMM liquidity pools; used to calculate bid/ask quotes via constant product formula.
+
+\item[Role Guard] Contract restricting which addresses can execute role-gated functions; part of access control system.
+
+% === S ===
+
+\item[Sandwich Attack] MEV attack bracketing a victim transaction with front-run and back-run to extract value.
+
+\item[Secondary Market Discount] Price reduction $D$ (typically 3--10\%) for locked position tokens relative to NAV; reflects inability to redeem for underlying assets.
+
+\item[$\sigma$, $\sigma_h$\,$\dagger$] Annualized and hourly volatility of the collateral asset. $\sigma_h = \sigma / \sqrt{8760}$. ETH calibration: $\sigma = 90\%$, $\sigma_h \approx 0.96\%$/hour.
+
+\item[Slippage] Price deviation from executing a trade against AMM reserves; increases with trade size relative to reserves.
+
+\item[Solvency Boundary] Parameter constraint ensuring protocol can meet all obligations; default configuration satisfies $r_{\text{bonus}} + r_{\text{malus}} = 2s$, maintaining solvency for any lock adoption rate.
+
+\item[Spread] (1)~Oracle: bidirectional geomean of rel.\ spreads from both AMM query directions, stored as $\log_2(1 + s_{\text{geo}})$; wider spreads indicate lower liquidity or higher manipulation resistance. (2)~IRM: symmetric half-spread parameter (e.g., 10\%) applied to base rate; borrow rate = base~$\times$~$(1{+}s)$, supply rate = base~$\times$~$(1{-}s)$.
+
+\item[Spread Scaling] Logarithmic widening of bid/ask spreads for large positions via $\mu = \log_2(2x + 2)$ where $x = n \cdot s$, $n$ is token count and $s$ is rel.\ spread; reflects market impact without governance parameters.
+
+\item[Square] Restricted-access liquidation function executing debt assumption: for a given exponent $e$, atomically transfers $\lfloor\text{borrow}/2^e\rfloor$ and $\lfloor\text{supply}/2^e\rfloor$ from victim to liquidator via bit-shift. Reverts if the victim is healthy ($H \geq 1$) or the liquidator's post-transfer health is insufficient. See also Debt Assumption, Partial Liquidation.
+
+\item[Staleness] Age of price data from an oracle; stale prices beyond threshold are rejected to prevent exploitation.
+
+\item[Supply Position] ERC20 token representing deposited collateral; uses standard transfer semantics.
+
+\item[Sybil Attack] Creating multiple accounts to gain unfair advantage; XPower Banq defends against rapid capacity monopolization.
+
+\item[Sybil Resistance] Protection against Sybil attacks; in XPower Banq, bounds accumulation \emph{rate} via holder-count scaling, not equilibrium share.
+
+% === T ===
+
+\item[Time-lock] Mandatory delay between proposing and executing governance parameter changes; prevents sudden malicious updates.
+
+\item[Time-Weighted Mean] Integration technique averaging parameter values over time; enables smooth transitions without discrete jumps.
+
+\item[Token Bucket] Rate limiting mechanism with capacity $C$, regeneration rate, and per-operation cost; operation allowed iff $C \geq 0$.
+
+\item[TVL\,$\dagger$] Total Value Locked---the aggregate collateral value in the lending pool. All bad-debt metrics are reported as a percentage of TVL.
+
+\item[tx.origin] Transaction originator address included in PoW hash; prevents front-runners from reusing others' solutions.
+
+\item[TWAP] Time-Weighted Average Price---price smoothed over time via log-space EMA (geometric mean temporal averaging) to resist manipulation. Simulated in Appendix~F.
+
+% === U ===
+
+\item[Utilization] Ratio of borrowed assets to supplied assets in a vault; drives interest rates via a piecewise-linear model with a kink at optimal utilization.
+
+% === V ===
+
+\item[$\text{VaR}(99\%)$\,$\dagger$] Value-at-Risk at the 99th percentile---the bad debt level exceeded in only 1\% of simulated paths.
+
+\item[Vault] ERC4626-compliant custody contract holding deposited assets; tracks utilization for the interest rate model.
+
+% === W ===
+
+\item[$W$\,$\dagger$] Phantom-healthy window---the number of oracle refreshes during which a position remains phantom-healthy after a crash (Definition~\ref{def:phantom}).
+
+\item[WAD] Fixed-point representation with 18 decimal places ($10^{18}$).
+
+\item[Weight] Multiplier applied to asset values in health calculations; determines effective LTV. Default: $w_s = 85$, $w_b = 255$.
+
+\end{description}
+
+% Ensure even page count for duplex printing
+\clearpage
+\ifodd\value{page}\else\thispagestyle{empty}\null\clearpage\fi
+
+\end{document}
