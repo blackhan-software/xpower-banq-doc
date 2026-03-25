@@ -1,0 +1,529 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{subfiles}
+
+% Shared preamble (packages, colors, listings, theorem environments)
+\input{shared/banq-preamble}
+\input{shared/banq-meta}
+\input{shared/banq-bundle}
+
+% ==============================================================================
+% Title and Authors
+% ==============================================================================
+\title{\textbf{\Large XPower Banq: Mathematical Theory \& Proofs}\\[0.3em]
+\normalsize Foundations, Formal Proofs, and Nash Equilibrium Analysis\\
+for the XPower Banq Lending Protocol}
+
+\author{
+    \banqAuthor\thanks{\banqAuthorContact}
+}
+
+\date{}
+
+\ifbundle\else
+\renewcommand{\thepage}{MTP/\arabic{page}}
+\fi
+
+% ==============================================================================
+% Document Begin
+% ==============================================================================
+\begin{document}
+
+% Standalone-only front matter: title and arXiv tag (the abstract is emitted
+% via \banqAbstract below, which renders it inline here in standalone mode
+% and stashes it for the bundle's verso page after the cover).
+\ifbundle\else
+\maketitle
+\input{shared/arxiv-tag}
+\fi
+
+\banqAbstract{%
+We collect the theoretical foundations of the XPower Banq lending protocol~\cite{wp}: continuous-compounding interest accrual, log-space TWAP construction, time-weighted parameter integration, token-bucket rate limiting, and formal proofs of cascade attenuation, Sybil rate-limiting, governance rate bounds, and MEV front-running resistance. We then analyse the Nash equilibrium of lock adoption under utilization-dependent rates and a secondary-market discount, characterising two self-reinforcing equilibria (low and high adoption) and proving that the protocol margin remains within sustainable bounds for any aggregate lock fraction $\bar{\rho} \in [0,1]$. Numerical evaluation of these results is the subject of the companion simulations paper~\cite{sim}.%
+}{DeFi lending, formal proofs, Nash equilibrium, lock adoption, oracle theory, TWAP}
+
+% ==============================================================================
+% Body content
+% ==============================================================================
+
+\banqPaper{Mathematical Theory \& Proofs}{Foundations, Formal Proofs, and Nash Equilibrium Analysis for the XPower Banq Lending Protocol}
+
+\section{Mathematical Foundations}
+\label{apx:math}
+
+\subsection{Interest Accrual}
+
+Interest accrues via continuous compounding with ray precision (27 decimals).
+
+\begin{definition}[Position Index]
+The global index $I_t$ at time $t$ with annual rate $r$:
+\begin{equation}
+I_t = I_0 \cdot e^{r \cdot (t - t_0) / T_{\text{year}}}
+\end{equation}
+where $T_{\text{year}} = 365.25 \times 86400 = 31{,}557{,}600$ seconds.\footnote{\texttt{YEAR = CENTURY/100} with \texttt{CENTURY = 365\_25 days}, i.e.\ $36525 \cdot 86400 / 100 = 31{,}557{,}600$ s, to keep the constant integer-valued in Solidity.}
+\end{definition}
+
+\begin{theorem}[Balance Accrual]
+A user's total balance $B_t$ given principal $P$ and checkpoint index $I_u$:
+\begin{equation}
+B_t = P \cdot \frac{I_t}{I_u}
+\end{equation}
+\end{theorem}
+
+\begin{remark}[Piecewise integration in practice]
+In the shipped contracts, $r$ is not a single constant but a function of utilization $r(t) = \hat r(\text{util}(t))$, and the index is integrated piecewise:
+\begin{equation*}
+\log I_t - \log I_0 = \sum_i \hat r(\text{util}_i) \cdot (t_{i+1} - t_i)/T_{\text{year}}
+\end{equation*}
+with re-indexings driven by every state-changing call. See \texttt{Position.\_indexOf} and \texttt{Position.\_reindex}; this matches the time-weighted framing of \S\ref{def:time-weighted-mean}.
+\end{remark}
+
+\subsection{Time-Weighted Integration}
+
+\begin{definition}[Time-Weighted Mean]
+\label{def:time-weighted-mean}
+For parameter values $\theta_i$ at times $t_i$:
+\begin{equation}
+\bar{\theta}(t) = \frac{\sum_{i=0}^{n-1} \theta_i \cdot (t_{i+1} - t_i) + \theta_n \cdot (t - t_n)}{t - t_0}
+\end{equation}
+\end{definition}
+
+\subsection{Oracle Price Aggregation}
+
+\begin{definition}[Log-Space TWAP Quote]
+\label{def:twap-quote}
+Each refresh queries the AMM bidirectionally and computes:
+\begin{align}
+m_t &= \log_2(\bar{p}_t) && \text{(log mid price)} \\
+s^{AB}_{t,log} &= \log_2(1 + s^{AB}_t) && \text{(log spread AB)} \\
+s^{BA}_{t,log} &= \log_2(1 + s^{BA}_t) && \text{(log spread BA)} \\
+r_t &= \tfrac{1}{2}\bigl(s^{AB}_{t,log} + s^{BA}_{t,log}\bigr) && \text{(log geomean spread)}
+\end{align}
+The EMA smooths in log space with decay $\alpha$, blending the previous mean with the \emph{previously stored} sample (the contract maintains a one-sample buffer: \texttt{TWAPLib.update} reads \texttt{last\_mid = midOf(last)} \emph{before} overwriting \texttt{twap\_.last} with the new $m_t$, so the new sample enters the mean only at the next refresh):
+\begin{align}
+\overline{m}_t &= \alpha \cdot \overline{m}_{t-1} + (1{-}\alpha) \cdot m_{t-1} \\
+\overline{r}_t &= \alpha \cdot \overline{r}_{t-1} + (1{-}\alpha) \cdot r_{t-1}
+\end{align}
+where $m_{t-1}$ (resp.\ $r_{t-1}$) denotes the most recent sample observed strictly \emph{before} the current refresh.
+\end{definition}
+
+\begin{definition}[Spread Scaling]
+\label{def:spread-scaling}
+Let $n = \texttt{amount}/\texttt{unit\_source}$ be the position expressed in \emph{whole units} of the source asset (so a 1.5 ETH order has $n = 1.5$, not $1.5 \cdot 10^{18}$). With base spread $s = 2^{\overline{r}} - 1$:
+\begin{align}
+x &= n \cdot s, \quad \mu = \log_2(2x + 2), \quad s' = s \cdot \mu
+\end{align}
+Final quotes: $\text{bid}(n) = \text{value} - s' \cdot \text{value}/2$, $\text{ask}(n) = \text{value} + s' \cdot \text{value}/2$. Implemented in \texttt{Oracle.\_hlfSpread} / \texttt{Oracle.\_center}.
+\end{definition}
+
+\subsection{Rate Limiting}
+
+\begin{definition}[Token Bucket]
+A rate limiter with capacity $C_{\max}$, regeneration rate $1$ unit per wall-clock second (a hard-coded design choice, not a governable parameter), and per-call cost $c$ supplied by the caller (the \texttt{floor\_cost} argument of each modifier invocation):
+\begin{equation}
+C'(t) = \min\left(C_{\max}, C(t_{\text{last}}) + (t - t_{\text{last}})\right) - c
+\end{equation}
+Operation allowed iff $C'(t) \geq 0$. Implementation: \texttt{RateLimited.\_ratelimitedCheck} regenerates first, reverts if $C(t_{\text{last}}) + (t - t_{\text{last}}) < c$, then commits the post-decrement state---algebraically equivalent to the post-cost residual $C'(t) \geq 0$.
+\end{definition}
+
+\section{Formal Proofs}
+\label{apx:proofs}
+
+\subsection{Cascade Attenuation Proof}
+
+\begin{proof}[Proof of the Cascade Attenuation Theorem (\S4.1 of~\cite{wp})]
+Let liquidation of position $P$ with lock fraction $\phi$ transfer supply tokens $S$ to liquidator $L$.
+
+\textbf{Step 1:} By \texttt{Position.burn}, \texttt{redeem} reverts when the post-burn balance would fall below the user's aggregate lock total: the post-condition asserts \texttt{totalOf(user) $\geq$ \_lock.totalOf(user)} after burning the requested amount, raising \texttt{Locked(user, total)} otherwise. There is no per-token ``locked vs.\ unlocked'' tag; the lock is a reservation against the aggregate balance. Hence the locked share $\phi \cdot S$ of any position cannot leave the protocol; only the unlocked surplus $(1{-}\phi) \cdot S$ is available for redemption and resale.
+
+\textbf{Step 2:} Liquidator $L$ receives position tokens, not underlying assets. The underlying assets remain in the Vault.
+
+\textbf{Step 3:} Only unlocked fraction $(1{-}\phi)$ can generate sell pressure. Price impact: $\Delta p = f((1{-}\phi) \cdot V_{\text{sold}})$.
+
+\textbf{Step 4:} Lock property is preserved through transfer: by \texttt{Position.\_lockPush} $\to$ \texttt{LockLib.push}, each ring-buffer slot's value is scaled by $\texttt{mulDiv}(\texttt{src\_value}, \texttt{amount}, \texttt{balance})$ and added to the target. This is invoked unconditionally on every \texttt{transferFrom}, including the liquidation path. Hence the per-user lock fraction $\phi_{\text{user}} = \texttt{depthOf}(\text{user})/\texttt{balance}(\text{user})$ is preserved across any transfer of size $\leq$ \texttt{balance}. Therefore the cascade amplification factor is bounded by $(1{-}\phi)$.
+\end{proof}
+
+\subsection{Sybil Rate-Limiting}
+
+\begin{definition}[Sybil Resistance Scope]
+\label{def:sybil-scope}
+The cap system bounds accumulation \emph{rate} via holder-count scaling. It does \textbf{not} guarantee that more accounts hurts an attacker's long-term equilibrium share---simulation shows $<$2\% penalty over 60 weeks.
+\end{definition}
+
+\begin{theorem}[Sybil Attack Cost]
+\label{thm:sybil-cost}
+Assume each of the $k$ Sybil accounts holds a positive balance of at least one whole position token (\texttt{balance $\geq$ unit\_token = $10^{\text{decimals}}$}), so that it is counted as a \emph{large holder} by \texttt{Position.\_largeHolders} (the running counter incremented in \texttt{\_update} only when an account crosses \texttt{balance $\geq$ unit}). Assume further that the per-account cap considered is for a \emph{subsequent} deposit on top of an existing positive balance, so that the $\beta(\lambda) = 12\lambda(1{-}\lambda)^2$ weighting of \texttt{\_capOf} (gated on \texttt{balance > 0 \&\& total > balance}) applies. Then for the attacker to increase total cap gain by factor $F$, they must create $k > F^2 \cdot (n{+}2) - (n{+}2)$ such large-holder Sybils. This quadratic scaling makes large gains expensive.
+\end{theorem}
+
+\begin{proof}
+Under the large-holder hypothesis the denominator $\sqrt{\texttt{largeHolders()}+2}$ scales from $\sqrt{n+2}$ to $\sqrt{n+k+2}$ when $k$ funded Sybils are added; a Sybil account with \texttt{balance < unit} would not advance the counter and is excluded by hypothesis. Under the existing-holder hypothesis, the beta block of \texttt{\_capOf} is active. With 1 account: $C_1 = C_{\max} \cdot \beta(\lambda) / \sqrt{n{+}2}$. With $k$ equal accounts and small $\lambda/k$: $C_k \approx 12\lambda C_{\max}/\sqrt{n{+}k{+}2}$. For $C_k > F \cdot C_1$: $\sqrt{n{+}2}/\sqrt{n{+}k{+}2} > F/k$, yielding the stated bound. (A floor \texttt{MIN\_HOLDERS\_ID} on \texttt{largeHolders()} prevents the denominator from collapsing when $n$ is small.)
+\end{proof}
+
+\subsection{Governance Rate Bound Proof}
+
+\begin{proof}[Proof of the Governance Rate Bound (\S6 of~\cite{wp})]
+\textbf{Step 1 (Single bound):} Each transition satisfies $\theta_0/\mu \leq \theta_1 \leq \mu \cdot \theta_0$, enforced inline by \texttt{Parameterized.\_setTargetIf}, which compares the proposed value against \texttt{old\_value <{}< 1} (upper bound, $\mu = 2$) and \texttt{old\_value >{}> 1} (lower bound, $1/\mu$) and reverts on violation.
+
+\textbf{Step 2 (Rate limiting):} \texttt{setTarget} is guarded by the \texttt{limited(Constant.MONTH, \dots)} modifier, which restricts updates to once per $\Delta t_{\min} = $ \texttt{Constant.MONTH} $= $ \texttt{Constant.YEAR}$/12 \approx 30.4375$ days (a compile-time constant, not a governable parameter). In interval $(t{-}t_0)$, at most $n = \lfloor(t{-}t_0)/\Delta t_{\min}\rfloor$ transitions occur.
+
+\textbf{Step 3 (Composition):} After $n$ transitions: $\theta_n \leq \mu^n \theta_0$ and $\theta_n \geq \mu^{-n} \theta_0$.
+
+\textbf{Step 4 (Transitions):} During transitions, the time-weighted mean stays between $\theta_{\text{old}}$ and $\theta_{\text{new}}$, preserving the bound.
+\end{proof}
+
+\begin{corollary}[Attack Detection Window]
+To change a parameter by factor $F > \mu$: $T_{\text{attack}} \geq \lceil\log_\mu F\rceil \cdot \Delta t_{\min}$. With $\mu = 2$ and the compile-time constant $\Delta t_{\min} = $ \texttt{Constant.MONTH} $\approx 30.4375$ days (not itself governable), a $10\times$ change requires 4~months.
+\end{corollary}
+
+\subsection{MEV Front-Running Resistance}
+
+\begin{theorem}[MEV Front-Running Cost]
+\label{thm:mev}
+A liquidation with profit $\pi$ cannot be profitably front-run if:
+$H_{\text{attacker}}/H_{\text{victim}} < t_{\text{cache}}/T_{\text{PoW}}(\pi)$
+where $t_{\text{cache}}$ is the \texttt{PowLimited} cache window over which the PoW key is stable.
+\end{theorem}
+
+\begin{proof}
+The PoW hash includes \texttt{tx.origin}, preventing solution reuse across attacker EOAs. The \texttt{PowLimited} modifier caches the block hash anchoring the PoW key for \texttt{cacheTime} seconds, refreshing only once \texttt{cacheTime + \_blockTime < block.timestamp}. Both \texttt{Pool} and \texttt{Oracle} instantiate \texttt{PowLimited(1 hours)}, so $t_{\text{cache}} = 1$~hour~$= 3600$~s. With expected solve time $T_{\text{PoW}}(\pi) = 16^d / H$, the attacker must mine independently within $t_{\text{cache}}$ against its own \texttt{tx.origin}; front-running fails when $T_{\text{PoW}} > t_{\text{cache}}$, i.e.\ when difficulty $d$ is tuned so that $16^d / H_{\text{attacker}} > t_{\text{cache}} = 3600$~s.
+\end{proof}
+
+\section{Nash Equilibrium Analysis for Lock Adoption}
+\label{apx:nash}
+
+This section analyzes the game-theoretic equilibrium of lock adoption. We model rational actors choosing between locked and unlocked positions, accounting for APY differentials, secondary market dynamics, and liquidation seniority.
+
+\subsection{Model Setup}
+
+\subsubsection{Position Types and Rates}
+
+With spread $s = 10\%$ and $r_{\text{bonus}} = r_{\text{malus}} = s$:
+
+\begin{center}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l r >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Position Type & Rate Multiplier & APY vs.\ Base \\
+\midrule
+Unlocked Supplier & $(1-s) = 0.90$ & $-10\%$ \\
+Locked Supplier & $(1+r_{\text{bonus}})(1-s) = 0.99$ & $-1\%$ \\
+Unlocked Borrower & $(1+s) = 1.10$ & $+10\%$ \\
+Locked Borrower & $(1-r_{\text{malus}})(1+s) = 0.99$ & $-1\%$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The \textbf{APY differential} between locked and unlocked positions:
+\begin{equation}
+\Delta r = r_{\text{base}} \times (1-s) \times r_{\text{bonus}} = r_{\text{base}} \times 0.9 \times 0.1 = 0.09 \times r_{\text{base}}
+\end{equation}
+
+\subsubsection{Secondary Market Dynamics}
+
+Position tokens are ERC20-transferable, enabling secondary market trading. However, locked positions trade at a \textbf{discount} $D$ relative to NAV because:
+\begin{enumerate}
+    \item Locked positions cannot be redeemed for underlying assets
+    \item Exit is only possible via secondary market sale
+    \item Lock status transfers proportionally with tokens (buyers receive locked tokens)
+\end{enumerate}
+
+The discount $D$ is endogenous to market conditions, typically ranging from 3--10\%\footnote{Empirical range observed in secondary markets for illiquid DeFi positions: Lido stETH traded at 6--7\% discount during the June 2022 liquidity crisis (Nansen, ``On-Chain Forensics: Demystifying stETH's De-peg,'' 2022); Convex cvxCRV has traded at 5--12\% discount to CRV due to permanent lock-up (geeogi, ``cvxCRV peg,'' 2022).} based on:
+\begin{itemize}
+    \item Secondary market liquidity depth
+    \item Expected holding period of market participants
+    \item Overall lock adoption rate (affecting liquidity)
+\end{itemize}
+
+\subsection{Player Utility Functions}
+
+\subsubsection{Supplier Utility}
+
+For a supplier with lock ratio $\rho \in [0,1]$ and holding period $T$:
+
+\textbf{Unlocked position} ($\rho = 0$):
+\begin{equation}
+U_{\text{unlocked}} = P \times (1 + r_{\text{unlocked}})^T
+\end{equation}
+
+\textbf{Locked position} ($\rho = 1$):
+\begin{equation}
+U_{\text{locked}} = P \times (1 + r_{\text{locked}})^T \times (1 - D)
+\end{equation}
+
+where the $(1-D)$ factor reflects the secondary market discount on exit.
+
+\subsubsection{Breakeven Condition}
+
+Lock adoption is rational when $U_{\text{locked}} > U_{\text{unlocked}}$:
+\begin{equation}
+(1 + r_{\text{locked}})^T \times (1 - D) > (1 + r_{\text{unlocked}})^T
+\end{equation}
+
+Solving for the \textbf{breakeven holding period} $T^*$:
+\begin{equation}
+\label{eq:breakeven}
+T^* = \frac{\ln(1-D)}{\ln(1 + r_{\text{unlocked}}) - \ln(1 + r_{\text{locked}})} \approx \frac{D}{\Delta r}
+\end{equation}
+
+\subsection{Breakeven Analysis by Utilization}
+
+The base interest rate $r_{\text{base}}$ varies with utilization $U$ according to the piecewise-linear model (\S4.7 of~\cite{wp}). Table~\ref{tab:nash-breakeven} presents breakeven periods for various utilization levels.
+
+\begin{table}[htbp]
+\centering
+\caption{Breakeven holding periods by utilization}
+\label{tab:nash-breakeven}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Utilization $U$ & Base Rate $r$ & Differential $\Delta r$ & $T^*$ ($D=5\%$) & $T^*$ ($D=3\%$) \\
+\midrule
+80\% & 8.9\% & 0.80\% & 6.3y & 3.8y \\
+90\% & 10\% & 0.90\% & 5.6y & 3.3y \\
+95\% & 55\% & 4.95\% & 12m & 7m \\
+98\% & 82\% & 7.38\% & 8m & 5m \\
+100\% & 100\% & 9.0\% & 6.7m & 4m \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Lock adoption thus becomes economically attractive primarily during high-utilization periods ($U > 95\%$), precisely when cascade prevention is most valuable.
+
+\subsection{Liquidation Seniority Value}
+
+Locked positions gain \emph{de facto} seniority in liquidations because liquidators prefer unlocked positions (immediate liquidity). The seniority value $S(\bar{\rho})$ depends on aggregate lock adoption $\bar{\rho}$ (denoted $\phi$ in the Cascade Attenuation Theorem (\S4.1 of~\cite{wp})):
+
+\begin{equation}
+S(\bar{\rho}) \approx P(\text{liquidation}) \times (1 - \bar{\rho}) \times L_{\text{loss}}
+\end{equation}
+
+where $P(\text{liquidation})$ is the probability of a liquidation event and $L_{\text{loss}}$ is the expected loss in liquidation.
+
+This creates a \textbf{coordination game}: seniority value decreases as lock adoption increases. At $\bar{\rho} = 0$, locked positions have maximum seniority; at $\bar{\rho} = 1$, no differentiation exists.
+
+\subsection{Nash Equilibrium Characterization}
+
+\subsubsection{Equilibrium Condition}
+
+At equilibrium lock adoption $\bar{\rho}^*$, the marginal user is indifferent between locking and not locking:
+\begin{equation}
+\underbrace{\Delta r \times T}_{\text{APY benefit}} + \underbrace{S(\bar{\rho}^*)}_{\text{Seniority}} = \underbrace{D}_{\text{Discount cost}}
+\end{equation}
+
+\subsubsection{Utilization-Dependent Equilibria}
+
+\begin{table}[htbp]
+\centering
+\caption{Equilibrium lock adoption by utilization regime}
+\label{tab:nash-equilibria}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}l >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Utilization Regime & Base Rate & Expected $\bar{\rho}^*$ & Protocol Margin \\
+\midrule
+Normal ($U \in [0,90\%)$) & $<10\%$ & 10--20\% & 16--18\% of $r$ \\
+Elevated ($U \in [90\%,95\%)$) & 10--55\% & 20--40\% & 12--16\% of $r$ \\
+Stressed ($U \in [95\%,100\%]$) & $>55\%$ & 40--70\% & 6--12\% of $r$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The mechanism thus aligns incentives with protocol needs: under normal conditions, low lock adoption preserves revenue, while under stressed conditions, high adoption provides cascade protection when it is most needed.
+
+\subsection{Protocol Margin Analysis}
+
+\subsubsection{Margin as Function of Lock Adoption}
+
+Protocol margin per unit interest flow:
+\begin{equation}
+M(\bar{\rho}) = 2s - r_{\text{bonus}} \times \bar{\rho}^S - r_{\text{malus}} \times \bar{\rho}^B
+\end{equation}
+
+With $r_{\text{bonus}} = r_{\text{malus}} = s$ and assuming $\bar{\rho}^S = \bar{\rho}^B = \bar{\rho}$:
+\begin{equation}
+M(\bar{\rho}) = 2s(1 - \bar{\rho})
+\end{equation}
+
+\begin{table}[htbp]
+\centering
+\caption{Protocol margin by lock adoption}
+\label{tab:nash-margin}
+\small
+\begin{tabularx}{0.95\columnwidth}{@{}>{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+\toprule
+Lock Adoption $\bar{\rho}$ & Margin & Retention \\
+\midrule
+0\% & 20\% of $r$ & 100\% \\
+25\% & 15\% of $r$ & 75\% \\
+50\% & 10\% of $r$ & 50\% \\
+75\% & 5\% of $r$ & 25\% \\
+100\% & 0\% of $r$ & 0\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Solvency at Full Adoption}
+
+The default configuration operates at the solvency boundary:
+\begin{equation}
+r_{\text{bonus}} + r_{\text{malus}} = s + s = 2s \quad \checkmark
+\end{equation}
+
+Protocol solvency is maintained for any $\bar{\rho} \in [0, 1]$, though margin approaches zero as $\bar{\rho} \to 1$.
+
+\subsection{Stability Analysis}
+
+\subsubsection{Multiple Equilibria}
+
+The lock adoption game exhibits \textbf{multiple equilibria} due to the endogenous discount:
+
+\begin{enumerate}
+    \item \textbf{Low-adoption equilibrium} ($\bar{\rho}^* \approx 10\%$): Thin secondary market $\Rightarrow$ high discount $D$ $\Rightarrow$ locking unattractive $\Rightarrow$ low adoption (self-reinforcing)
+
+    \item \textbf{High-adoption equilibrium} ($\bar{\rho}^* \approx 60\%$): Deep secondary market $\Rightarrow$ low discount $D$ $\Rightarrow$ locking attractive $\Rightarrow$ high adoption (self-reinforcing)
+\end{enumerate}
+
+\subsubsection{Equilibrium Selection}
+
+The realized equilibrium depends on:
+\begin{itemize}
+    \item \textbf{Initial conditions}: Early lock adoption seeds secondary market liquidity
+    \item \textbf{Utilization dynamics}: High-utilization periods push toward high-adoption equilibrium
+    \item \textbf{External liquidity}: Protocol-seeded liquidity can bootstrap the high-adoption equilibrium
+\end{itemize}
+
+\subsection{Summary}
+
+The lock mechanism creates a self-regulating system in which rational actors provide cascade protection precisely when the protocol most needs it.
+
+\begin{theorem}[Lock Adoption Equilibrium]
+\label{thm:nash}
+With $r_{\text{bonus}} = r_{\text{malus}} = s = 10\%$:
+\begin{enumerate}
+    \item Lock adoption is \textbf{utilization-dependent}: attractive when $U > 95\%$, marginal otherwise
+    \item The APY differential $\Delta r = 9\% \times r_{\text{base}}$ provides maximum incentive within solvency constraints
+    \item Lock adoption \textbf{self-regulates}: increases during stress (cascade protection) and decreases during calm (revenue preservation)
+    \item Protocol margin ranges from 20\% of $r$ (no locks) to 0\% of $r$ (full locks), with expected operating range 8--16\% of $r$
+\end{enumerate}
+\end{theorem}
+
+The secondary market discount acts as a natural governor---preventing full adoption while ensuring sufficient incentive for meaningful cascade protection---so the mechanism achieves incentive alignment without external intervention.
+
+The welfare balance is favorable. Cascade attenuation reduces depth by factor~$(1{-}\phi)$, and spread compression rewards committed participants---at full lock with $s = r_{\text{bonus}} = r_{\text{malus}} = 10\%$, both locked suppliers and borrowers face effective rate multiplier~$0.99$, approaching a zero-spread market. Against these benefits stands liquidity fragmentation: locked supply raises effective utilization to $U_{\text{eff}} = V_b / (V_s(1{-}\phi))$, potentially triggering kink-rate dynamics at lower borrow volumes. The interest rate curve absorbs this naturally---higher effective utilization raises rates, incentivizing settlement---so the effect narrows the sub-kink operating range without creating instability.
+
+Together, these properties confirm Theorem~\ref{thm:nash}: the mechanism is self-regulating, with per-parameter solvency bounds that require no on-chain adoption tracking, cascade dynamics that naturally throttle liquidation velocity, and welfare effects that the interest rate curve absorbs without instability.
+
+\subsubsection{Equilibrium Structure}
+
+The game exhibits two self-reinforcing equilibria: high adoption ($\bar{\rho} > 40\%$, margin 8--12\% of~$r$, strong cascade protection) and low adoption ($\bar{\rho} < 15\%$, margin 16--20\% of~$r$, high cascade exposure). Selection is path-dependent---seeding secondary market liquidity bootstraps the high-adoption regime, while neglect traps the protocol in low adoption. Governance can influence this by initially setting $r_{\text{bonus}}$ above the long-run target, then reducing it via lethargic transition once adoption stabilizes.
+
+Within either regime, the mechanism is countercyclical: lock adoption rises above $U = 95\%$ when cascade prevention is most valuable, then recedes as utilization normalizes, restoring margin. Lethargic governance reinforces this---the 0.5x--2x per-cycle parameter bound ensures that equilibrium shifts occur gradually enough for the secondary market to adjust. During stress, protocol margin decreases as the intended trade-off for cascade protection, and recovers during the subsequent normalization.
+
+The equilibrium is asymmetric across position types. Locked suppliers earn at effective rate $r_{\text{base}}(1{-}s)(1{+}r_{\text{bonus}} \cdot \rho_u)$ but must compensate the secondary market discount~$D$, requiring $U > 95\%$ for rational adoption. Locked borrowers pay at effective rate $r_{\text{base}}(1{+}s)(1{-}r_{\text{malus}} \cdot \rho_u)$---reducing an \emph{obligation} with no redemption friction---making $\bar{\rho}^B > \bar{\rho}^S$ in the normal regime, converging during stress as the supply bonus dominates. A plausible operating point ($\bar{\rho}^S \approx 15\%$, $\bar{\rho}^B \approx 35\%$) yields:
+\begin{equation}
+M = 2s - s \cdot \bar{\rho}^S - s \cdot \bar{\rho}^B = 20\% - 1.5\% - 3.5\% = 15\% \text{ of } r
+\end{equation}
+within the sustainable range of Table~\ref{tab:nash-margin}.
+
+\subsubsection{Cascade Dynamics and Keeper Sizing}
+
+Debt assumption transfers locks proportionally, preserving aggregate~$\bar{\rho}$ through cascades---the attenuation bound $(1{-}\phi)$ from Theorem~4.1 of~\cite{wp} holds dynamically, not merely at a pre-crash snapshot. At $\bar{\rho} \approx 30\%$, this reduces 25\%-shock liquidations from 85.7\% to~$\approx$55\% of positions (Table~5 of~\cite{wp}). However, locked supply received by a liquidator cannot be redeemed: absorbing a fully-locked victim at exponent~$e$ increases assumed debt by $d = V_b \cdot 2^{-e}$ while adding zero redeemable supply, eroding headroom for subsequent liquidations.
+
+The exponent choice is itself strategic. Choosing $e = 0$ captures the full position---maximizing per-event profit but inheriting the full lock fraction. Choosing $e \geq 1$ halves the position taken, reducing lock inheritance at the cost of leaving the remainder available to competitors. In equilibrium, the optimal~$e$ reflects each liquidator's current health factor and the remaining cascade depth: unconstrained liquidators with ample headroom prefer small~$e$, while capacity-constrained ones ration across targets. Both effects---lock removal from the liquidation pool and liquidator self-throttling---reinforce cascade attenuation.
+
+Keeper sizing must account for lock propagation. A keeper processing $k$ sequential liquidations needs headroom for both aggregate debt absorbed and the locked fraction that cannot be redeemed. If the expected victim lock fraction is~$\bar{\rho}$, the effective headroom requirement per liquidation increases by factor $1/(1{-}\bar{\rho})$ relative to the unlocked case, since only $(1{-}\bar{\rho})$ of received supply contributes redeemable collateral. The cascade simulation in the companion simulations paper~\cite{sim} quantifies this across varying lock fractions and crash severities.
+
+\subsubsection{Solvency Guarantees}
+
+Protocol solvency is enforced algebraically. The supervised contract enforces $r_{\text{bonus}} \leq s$ and $r_{\text{malus}} \leq s$ in \emph{both} directions via \texttt{\_setTarget} overrides: when setting \texttt{LOCK\_BONUS\_ID}/\texttt{LOCK\_MALUS\_ID}, the new value must be $\leq s$; when setting \texttt{SPREAD\_ID}, the new spread must remain $\geq \max(r_{\text{bonus}}, r_{\text{malus}})$, so a governance-driven \emph{decrease} of $s$ cannot violate the invariant either. Additionally $s \leq \texttt{Constant.HLF} = 0.5$ is enforced. Since $\bar{\rho}^S, \bar{\rho}^B \in [0,1]$, the aggregate condition $r_{\text{bonus}} \bar{\rho}^S + r_{\text{malus}} \bar{\rho}^B \leq 2s$ holds without on-chain lock-adoption tracking. The worst case ($\bar{\rho}^S = \bar{\rho}^B = 1$) yields zero margin but never insolvency---avoiding the gas overhead of global lock-adoption statistics by relying on per-parameter bounds enforced at governance time. Lock adoption also tightens beta-distributed caps indirectly: locked suppliers are persistent holders, inflating the effective~$n$ in the $\sqrt{n{+}2}$ divisor, while attackers splitting across $k$ accounts face the $O(\sqrt{k})$ cap-scaling barrier \emph{and} irrevocability---acquiring locked positions via secondary market incurs discount~$D$, creating a multiplicative barrier to rapid concentration.
+
+\subsubsection{Welfare}
+
+The welfare balance is favorable. Cascade attenuation reduces depth by factor~$(1{-}\phi)$, and spread compression rewards committed participants---at full lock with $s = r_{\text{bonus}} = r_{\text{malus}} = 10\%$, both locked suppliers and borrowers face effective rate multiplier~$0.99$, approaching a zero-spread market. Against these benefits stands liquidity fragmentation: locked supply raises effective utilization to $U_{\text{eff}} = V_b / (V_s(1{-}\phi))$, potentially triggering kink-rate dynamics at lower borrow volumes. The interest rate curve absorbs this naturally---higher effective utilization raises rates, incentivizing settlement---so the effect narrows the sub-kink operating range without creating instability.
+
+Together, these properties confirm Theorem~\ref{thm:nash}: the mechanism is self-regulating, with per-parameter solvency bounds that require no on-chain adoption tracking, cascade dynamics that naturally throttle liquidation velocity, and welfare effects that the interest rate curve absorbs without instability.
+
+% ==============================================================================
+% Standalone-only References
+% ==============================================================================
+\ifbundle\else
+\begin{thebibliography}{99}
+
+\bibitem{wp}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: A Permissionless DeFi Lending Protocol with Lethargic Governance and Beta-Distributed Position Caps.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{sim}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Simulations \& Risk Analysis.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{ref}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: References \& Glossary.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\end{thebibliography}
+\fi
+
+% ==============================================================================
+% Glossary
+% ==============================================================================
+\ifbundle\else
+\section*{Glossary}
+\label{mtp:glossary}
+\addcontentsline{toc}{section}{Glossary}
+
+\noindent A comprehensive glossary with over 120 entries appears in \cite{ref}. The following terms are central to this paper.
+
+\begin{description}[style=nextline, font=\normalfont\bfseries, leftmargin=1.5em]
+
+\item[$\alpha$\,$\dagger$] EMA decay parameter of the log-space TWAP oracle. Governs tracking speed: $\alpha = 0.5^{1/\text{HL}}$ where HL is the half-life in refreshes. Default $\alpha \approx 0.944$ (12 refreshes; with the default 1-hour refresh interval enforced by \texttt{PowLimited(1 hours)} in \texttt{Oracle.sol}, this is a 12-hour half-life).
+
+\item[Asymptotic Transition] Parameter change mechanism where values approach targets gradually via time-weighted mean rather than discrete jumps. See Lethargic Governance.
+
+\item[Beta Cap] Position limit following \mbox{$12\lambda(1-\lambda)^2$} distribution where $\lambda$ is the user's fraction of total supply; peaks at $\lambda = 1/3$ and vanishes at boundaries.
+
+\item[Cascade Attenuation] Reduction of liquidation-cascade depth by factor~$(1{-}\phi)$, where $\phi$ is the locked fraction of the position; the central result of \S4.1 of~\cite{wp}.
+
+\item[Coordination Game] Strategic interaction where player payoffs depend on aggregate choices; lock adoption exhibits coordination dynamics where seniority value decreases as adoption increases.
+
+\item[Geomean Spread] Bidirectional geometric mean of relative spreads from forward and reverse AMM queries; stored in log-space as $\log_2(1 + s_{\text{geo}})$. Provides symmetric, manipulation-resistant spread estimation.
+
+\item[Half-Life] Time for EMA weight to decay to 50\%; determines TWAP responsiveness to new price observations. \cite[\S C]{wp} tabulates decay factors.
+
+\item[Health Factor] Ratio of weighted supply value to weighted borrow value: $H = \sum w_s V_s / \sum w_b V_b$. Liquidation occurs when $H < 1$.
+
+\item[Lethargic Governance] Governance model with time-delayed, bounded parameter transitions. Values approach targets asymptotically, bounded to $0.5\times$--$2\times$ per governance cycle. See \cite[\S A]{wp}.
+
+\item[Liquidation Cascade] Destructive feedback loop where forced sales depress prices, triggering further liquidations. Modeled in \cite{sim}.
+
+\item[Lock Adoption] Aggregate fraction $\bar{\rho}$ of positions that are locked across the protocol; equilibrium adoption varies with utilization regime. Analyzed in this paper.
+
+\item[Log-Space Oracle] Oracle architecture storing prices as $\log_2(\text{price})$ and spreads as $\log_2(1 + s)$; enables EMA smoothing as geometric-mean temporal averaging.
+
+\item[Multiplicative Bounds] Constraint limiting parameter changes to $0.5\times$--$2\times$ per governance cycle; prevents rapid manipulation.
+
+\item[Nash Equilibrium] Stable strategic state where no player can improve their payoff by unilaterally changing strategy; lock adoption exhibits utilization-dependent equilibria. Analyzed in this paper.
+
+\item[Protocol Margin] Revenue retained by protocol from interest spread; $M(\bar{\rho}) = 2s(1-\bar{\rho})$ where $s$ is spread and $\bar{\rho}$ is lock adoption rate.
+
+\item[Solvency Boundary] Parameter constraint ensuring protocol can meet all obligations; default configuration satisfies $r_{\text{bonus}} + r_{\text{malus}} = 2s$, maintaining solvency for any lock adoption rate.
+
+\item[Spread] (1)~Oracle: bidirectional geomean of rel.\ spreads from both AMM query directions, stored as $\log_2(1 + s_{\text{geo}})$; wider spreads indicate lower liquidity or higher manipulation resistance. (2)~IRM: symmetric half-spread parameter (e.g., 10\%) applied to base rate; borrow rate = base~$\times$~$(1{+}s)$, supply rate = base~$\times$~$(1{-}s)$.
+
+\item[Time-Weighted Mean] Integration technique averaging parameter values over time; enables smooth transitions without discrete jumps.
+
+\item[Token Bucket] Rate limiting mechanism with capacity $C$, regeneration rate, and per-operation cost; operation allowed iff $C \geq 0$.
+
+\item[Utilization] Ratio of borrowed assets to supplied assets in a vault; drives interest rates via a piecewise-linear model with a kink at optimal utilization.
+
+\end{description}
+
+\clearpage
+\ifodd\value{page}\else\thispagestyle{empty}\null\clearpage\fi
+\fi
+
+\end{document}

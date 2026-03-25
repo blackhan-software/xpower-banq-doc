@@ -1,0 +1,309 @@
+% ==============================================================================
+% banq-bibliography.tex
+% Consolidated bibliography for the unified XPower Banq bundle.
+% Union of all bibitems from banq-pro, banq-apx, banq-lck, banq-log, with
+% duplicates removed. Cross-document self-references (wp, apx, lck, log,
+% mtp, sim, ref) are retained as ordinary entries so \cite calls resolve in
+% bundle mode without requiring per-section labels.
+%
+% This file is \input{} from 006.banq-ref/banq-ref.tex (always — that subfile
+% is the canonical home of both the standalone and bundle bibliographies).
+% The other five children maintain their own \begin{thebibliography} blocks
+% for standalone builds; those blocks are suppressed in bundle mode via
+% \ifbundle, leaving banq-ref's input as the single bibliography.
+% ==============================================================================
+
+\begin{thebibliography}{99}
+
+% --- XPower Banq companion documents (cross-references) ---
+
+\bibitem{wp}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: A Permissionless DeFi Lending Protocol with Lethargic Governance and Beta-Distributed Position Caps.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{apx}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Technical Appendices.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{lck}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Ring-Buffer Time Locks.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{log}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Log-Space Compounding Index.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{mtp}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Mathematical Theory \& Proofs.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{sim}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: Simulations \& Risk Analysis.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+\bibitem{ref}
+\textsc{Karun The Ritch}.
+\newblock XPower Banq: References \& Glossary.
+\newblock \emph{Preprint}, 2026.
+\newblock \url{https://www.xpowerbanq.com}
+
+% --- DeFi lending protocols ---
+
+\bibitem{compound2019}
+Leshner, R. and Hayes, G.
+\newblock Compound: The Money Market Protocol.
+\newblock \emph{Compound Whitepaper}, 2019.
+\newblock \url{https://compound.finance/documents/Compound.Whitepaper.pdf}
+
+\bibitem{aave2020}
+Aave Protocol.
+\newblock Aave Protocol Whitepaper V2.0.
+\newblock \emph{Aave Documentation}, 2020.
+\newblock \url{https://docs.aave.com/}
+
+\bibitem{makerdao2017}
+MakerDAO Team.
+\newblock The Maker Protocol: MakerDAO's Multi-Collateral Dai (MCD) System.
+\newblock \emph{MakerDAO Whitepaper}, 2017.
+\newblock \url{https://makerdao.com/whitepaper/}
+
+\bibitem{euler2022}
+Euler Labs.
+\newblock Euler Finance: Permissionless Lending Protocol.
+\newblock \emph{Euler Whitepaper}, 2022.
+\newblock \url{https://docs.euler.finance/}
+
+\bibitem{liquity2021}
+Lauko, R. and Pardoe, R.
+\newblock Liquity: Decentralized Borrowing Protocol.
+\newblock \emph{Liquity Whitepaper}, 2021.
+\newblock \url{https://docs.liquity.org/}
+
+\bibitem{morpho2022}
+Frambot, P. and Gontier Delaunay, M.
+\newblock Morpho Optimizer: Optimizing Decentralized Liquidity Protocols.
+\newblock \emph{Morpho Whitepaper}, 2022.
+\newblock \url{https://whitepaper.morpho.org/}
+
+% --- Surveys and academic references ---
+
+\bibitem{bartoletti2021}
+Bartoletti, M., Chiang, J.H., and Lafuente, A.L.
+\newblock SoK: Lending Pools in Decentralized Finance.
+\newblock \emph{Financial Cryptography and Data Security (FC)}, LNCS vol.~12676, pp.~553--578, 2021.
+
+\bibitem{werner2022}
+Werner, S.M., Perez, D., Gudgeon, L., Klages-Mundt, A., Harz, D., and Knottenbelt, W.J.
+\newblock SoK: Decentralized Finance (DeFi).
+\newblock \emph{ACM Computing Surveys}, 2022.
+
+\bibitem{gudgeon2020}
+Gudgeon, L., Perez, D., Harz, D., Livshits, B., and Gervais, A.
+\newblock The Decentralized Financial Crisis.
+\newblock \emph{Crypto Valley Conference}, 2020.
+
+\bibitem{perez2021}
+Perez, D., Werner, S.M., Xu, J., and Livshits, B.
+\newblock Liquidations: DeFi on a Knife-edge.
+\newblock \emph{Financial Cryptography and Data Security}, 2021.
+
+% --- Oracles and TWAPs ---
+
+\bibitem{mackinga2022}
+Mackinga, T., Nadahalli, T., and Wattenhofer, R.
+\newblock TWAP Oracle Attacks: Easier Done than Said?
+\newblock \emph{IEEE International Conference on Blockchain and Cryptocurrency}, 2022.
+
+\bibitem{chainlink2017}
+Ellis, S., Juels, A., and Nazarov, S.
+\newblock ChainLink: A Decentralized Oracle Network.
+\newblock \emph{Chainlink Whitepaper}, 2017.
+\newblock \url{https://chain.link/whitepaper}
+
+\bibitem{angeris2020}
+Angeris, G. and Chitra, T.
+\newblock Improved Price Oracles: Constant Function Market Makers.
+\newblock \emph{ACM Conference on Advances in Financial Technologies (AFT)}, 2020.
+
+\bibitem{uniswap2020}
+Adams, H., Zinsmeister, N., and Robinson, D.
+\newblock Uniswap v2 Core.
+\newblock \emph{Uniswap Documentation}, 2020.
+\newblock \url{https://docs.uniswap.org/}
+
+\bibitem{uniswap2021}
+Adams, H., Zinsmeister, N., Salem, M., Keefer, R., and Robinson, D.
+\newblock Uniswap v3 Core.
+\newblock \emph{Uniswap Documentation}, 2021.
+\newblock \url{https://docs.uniswap.org/}
+
+% --- MEV and attacks ---
+
+\bibitem{daian2020}
+Daian, P., Goldfeder, S., Kell, T., Li, Y., Zhao, X., Bentov, I., Breidenbach, L., and Juels, A.
+\newblock Flash Boys 2.0: Frontrunning in Decentralized Exchanges, Miner Extractable Value, and Consensus Instability.
+\newblock \emph{IEEE Symposium on Security and Privacy (S\&P)}, pp.~910--927, 2020.
+
+\bibitem{qin2022}
+Qin, K., Zhou, L., and Gervais, A.
+\newblock Quantifying Blockchain Extractable Value: How dark is the forest?
+\newblock \emph{IEEE Symposium on Security and Privacy (S\&P)}, pp.~198--214, 2022.
+
+\bibitem{qin2021flashloans}
+Qin, K., Zhou, L., Livshits, B., and Gervais, A.
+\newblock Attacking the DeFi Ecosystem with Flash Loans for Fun and Profit.
+\newblock \emph{Financial Cryptography and Data Security (FC)}, LNCS vol.~12674, pp.~3--32, 2021.
+
+\bibitem{beanstalk2022}
+Immunefi.
+\newblock Hack Analysis: Beanstalk Governance Attack, April 2022.
+\newblock \emph{Security Report}, 2022.
+\newblock \url{https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e}
+
+\bibitem{glassnode2020}
+Glassnode Insights.
+\newblock What Really Happened to MakerDAO on Black Thursday.
+\newblock \emph{Glassnode Analysis}, March 2020.
+\newblock \url{https://insights.glassnode.com/what-really-happened-to-makerdao/}
+
+\bibitem{liu2023terra}
+Liu, J., Makarov, I., and Schoar, A.
+\newblock Anatomy of a Run: The Terra Luna Crash.
+\newblock \emph{Harvard Law School Forum on Corporate Governance}, May 2023.
+\newblock \url{https://corpgov.law.harvard.edu/2023/05/22/anatomy-of-a-run-the-terra-luna-crash/}
+
+% --- Cryptography and Sybil ---
+
+\bibitem{nakamoto2008}
+Nakamoto, S.
+\newblock Bitcoin: A Peer-to-Peer Electronic Cash System.
+\newblock 2008.
+\newblock \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem{douceur2002}
+Douceur, J.R.
+\newblock The Sybil Attack.
+\newblock \emph{International Workshop on Peer-to-Peer Systems (IPTPS)}, LNCS vol.~2429, pp.~251--260, 2002.
+
+\bibitem{dwork1992}
+Dwork, C. and Naor, M.
+\newblock Pricing via Processing or Combatting Junk Mail.
+\newblock \emph{Advances in Cryptology -- CRYPTO '92}, LNCS vol.~740, pp.~139--147, 1992.
+
+\bibitem{roughgarden2021}
+Roughgarden, T.
+\newblock Transaction Fee Mechanism Design.
+\newblock \emph{ACM Conference on Economics and Computation (EC)}, 2021.
+
+\bibitem{feist2019}
+Feist, J., Grieco, G., and Groce, A.
+\newblock Slither: A Static Analysis Framework for Smart Contracts.
+\newblock \emph{IEEE/ACM International Workshop on Emerging Trends in Software Engineering for Blockchain (WETSEB)}, pp.~8--15, 2019.
+
+% --- Vote-escrow and time-locks (banq-lck) ---
+
+\bibitem{curve}
+Curve Finance.
+\newblock Vote-Escrowed CRV (veCRV).
+\newblock \emph{Curve Documentation}, 2020.
+\newblock \url{https://curve.readthedocs.io/dao-vecrv.html}
+
+\bibitem{convex}
+Convex Finance.
+\newblock Vote-Locked CVX (vlCVX).
+\newblock \emph{Convex Documentation}, 2021.
+\newblock \url{https://docs.convexfinance.com/convexfinance/general-information/understanding-cvx/vote-locking}
+
+\bibitem{oz-timelock}
+OpenZeppelin.
+\newblock TimelockController.
+\newblock \emph{OpenZeppelin Contracts}, 2020.
+\newblock \url{https://docs.openzeppelin.com/contracts/5.x/api/governance#TimelockController}
+
+\bibitem{oz-math}
+OpenZeppelin.
+\newblock Math Library (mulDiv).
+\newblock \emph{OpenZeppelin Contracts}, 2023.
+\newblock \url{https://docs.openzeppelin.com/contracts/5.x/api/utils#Math}
+
+\bibitem{openzeppelin2020}
+OpenZeppelin Team.
+\newblock OpenZeppelin Contracts.
+\newblock \emph{OpenZeppelin Documentation}, 2020.
+\newblock \url{https://docs.openzeppelin.com/contracts/}
+
+\bibitem{debruijn}
+de~Bruijn, N.G.
+\newblock A combinatorial problem.
+\newblock \emph{Proceedings of the Section of Sciences of the Koninklijke Nederlandse Akademie van Wetenschappen}, 49(7):758--764, 1946.
+
+\bibitem{ring-buffer}
+Lee, P.P.C., Bu, T., and Chandranmenon, G.P.
+\newblock A lock-free, cache-efficient shared ring buffer for multi-core architectures.
+\newblock In \emph{Proc.\ 5th ACM/IEEE Symposium on Architectures for Networking and Communications Systems (ANCS)}, pp.\ 78--79, 2009.
+\newblock \url{https://doi.org/10.1145/1882486.1882508}
+
+% --- Numerical methods (banq-log) ---
+
+\bibitem{prbmath}
+Razvan, P.
+\newblock PRBMath: Solidity Library for Fixed-Point Arithmetic.
+\newblock \emph{GitHub Repository}, 2023.
+\newblock \url{https://github.com/PaulRBerg/prb-math}
+
+\bibitem{higham2002}
+Higham, N.J.
+\newblock \emph{Accuracy and Stability of Numerical Algorithms}.
+\newblock SIAM, 2nd edition, 2002.
+
+\bibitem{blanchard2021}
+Blanchard, P., Higham, D.J., and Higham, N.J.
+\newblock Accurately Computing the Log-Sum-Exp and Softmax Functions.
+\newblock \emph{IMA Journal of Numerical Analysis}, 41(4):2311--2330, 2021.
+\newblock \url{https://doi.org/10.1093/imanum/draa038}
+
+\bibitem{solidity2024}
+Ethereum Foundation.
+\newblock Solidity Documentation: Checked or Unchecked Arithmetic.
+\newblock \emph{Solidity Docs}, v0.8.x, 2024.
+\newblock \url{https://docs.soliditylang.org/en/latest/control-structures.html#checked-or-unchecked-arithmetic}
+
+% --- Standards (EIP) ---
+
+\bibitem{erc20}
+Vogelsteller, F. and Buterin, V.
+\newblock EIP-20: Token Standard.
+\newblock \emph{Ethereum Improvement Proposals}, 2015.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-20}
+
+\bibitem{erc4626}
+Santoro, J., t11s, Jadeja, J., and Cuesta Ca\~{n}ada, A.
+\newblock EIP-4626: Tokenized Vaults.
+\newblock \emph{Ethereum Improvement Proposals}, 2022.
+\newblock \url{https://eips.ethereum.org/EIPS/eip-4626}
+
+% --- Finance and microstructure ---
+
+\bibitem{kyle1985continuous}
+Kyle, A.S.
+\newblock Continuous Auctions and Insider Trading.
+\newblock \emph{Econometrica}, 53(6):1315--1335, 1985.
+
+\bibitem{merton1976}
+Merton, R.C.
+\newblock Option Pricing When Underlying Stock Returns Are Discontinuous.
+\newblock \emph{Journal of Financial Economics}, 3(1--2):125--144, 1976.
+
+\end{thebibliography}

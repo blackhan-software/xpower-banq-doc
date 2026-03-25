@@ -1,0 +1,206 @@
+\contentsline {part}{I\hspace {1em}Protocol}{5}{section*.2}%
+\contentsline {section}{\numberline {I.}Protocol Whitepaper}{7}{section*.3}%
+\contentsline {section}{\numberline {I.\,1}Introduction}{7}{section.I.1}%
+\contentsline {section}{\numberline {I.\,2}Related Work}{7}{section.I.2}%
+\contentsline {section}{\numberline {I.\,3}Protocol Architecture}{7}{section.I.3}%
+\contentsline {section}{\numberline {I.\,4}Core Mechanisms}{8}{section.I.4}%
+\contentsline {subsection}{\numberline {I.\,4.1}Locked Positions and Cascade Attenuation}{8}{subsection.I.4.1}%
+\contentsline {subsection}{\numberline {I.\,4.2}Position Transfer Semantics}{8}{subsection.I.4.2}%
+\contentsline {subsection}{\numberline {I.\,4.3}Lethargic Governance}{9}{subsection.I.4.3}%
+\contentsline {subsection}{\numberline {I.\,4.4}Beta-Distributed Position Caps}{9}{subsection.I.4.4}%
+\contentsline {subsection}{\numberline {I.\,4.5}Health Factor and Liquidation}{10}{subsection.I.4.5}%
+\contentsline {subsection}{\numberline {I.\,4.6}Oracle TWAP}{10}{subsection.I.4.6}%
+\contentsline {subsection}{\numberline {I.\,4.7}Interest Rates}{10}{subsection.I.4.7}%
+\contentsline {section}{\numberline {I.\,5}Anti-Spam Protection}{10}{section.I.5}%
+\contentsline {section}{\numberline {I.\,6}Governance and Parameters}{11}{section.I.6}%
+\contentsline {section}{\numberline {I.\,7}Security Analysis}{11}{section.I.7}%
+\contentsline {subsection}{\numberline {I.\,7.1}Adversary Model}{11}{subsection.I.7.1}%
+\contentsline {subsection}{\numberline {I.\,7.2}Core Security Properties}{11}{subsection.I.7.2}%
+\contentsline {subsection}{\numberline {I.\,7.3}Risk Assessment}{11}{subsection.I.7.3}%
+\contentsline {section}{\numberline {I.\,8}Evaluation}{11}{section.I.8}%
+\contentsline {subsection}{\numberline {I.\,8.1}Agent-Based Cascade Simulation}{11}{subsection.I.8.1}%
+\contentsline {subsection}{\numberline {I.\,8.2}Gas Cost Analysis}{12}{subsection.I.8.2}%
+\contentsline {section}{\numberline {I.\,9}Limitations and Future Work}{12}{section.I.9}%
+\contentsline {section}{\numberline {I.\,10}Conclusion}{13}{section.I.10}%
+\contentsline {section}{\numberline {I.\,11}Protocol Parameters}{13}{section.I.11}%
+\contentsline {subsection}{\numberline {I.\,11.1}Pool Parameters}{13}{subsection.I.11.1}%
+\contentsline {subsection}{\numberline {I.\,11.2}Position Parameters}{13}{subsection.I.11.2}%
+\contentsline {subsection}{\numberline {I.\,11.3}Oracle Parameters}{13}{subsection.I.11.3}%
+\contentsline {subsection}{\numberline {I.\,11.4}Vault Parameters}{13}{subsection.I.11.4}%
+\contentsline {subsection}{\numberline {I.\,11.5}Change Rate Constraints}{13}{subsection.I.11.5}%
+\contentsline {subsection}{\numberline {I.\,11.6}Role-Based Access Control}{14}{subsection.I.11.6}%
+\contentsline {section}{\numberline {I.\,12}Protocol Constants}{14}{section.I.12}%
+\contentsline {section}{\numberline {I.\,13}EMA Decay Factors}{14}{section.I.13}%
+\contentsline {part}{II\hspace {1em}Engineering Primitives}{15}{section*.26}%
+\contentsline {section}{\numberline {IIa.}Ring-Buffer Time Locks}{17}{section*.27}%
+\contentsline {section}{\numberline {IIa.\,1}Introduction}{17}{section.IIa.1}%
+\contentsline {section}{\numberline {IIa.\,2}Related Work}{17}{section.IIa.2}%
+\contentsline {section}{\numberline {IIa.\,3}Preliminaries}{17}{section.IIa.3}%
+\contentsline {subsection}{\numberline {IIa.\,3.1}Definitions}{17}{subsection.IIa.3.1}%
+\contentsline {subsection}{\numberline {IIa.\,3.2}Storage Layout}{17}{subsection.IIa.3.2}%
+\contentsline {subsection}{\numberline {IIa.\,3.3}Bitmap Encoding}{17}{subsection.IIa.3.3}%
+\contentsline {section}{\numberline {IIa.\,4}Ring-Lock Mechanism}{18}{section.IIa.4}%
+\contentsline {subsection}{\numberline {IIa.\,4.1}\texttt {more(user, amount, dt\_term)} --- $O(1)$ Lock Addition}{18}{subsection.IIa.4.1}%
+\contentsline {subsection}{\numberline {IIa.\,4.2}\texttt {free(user)} --- $O(k)$ Expired Slot Sweep}{18}{subsection.IIa.4.2}%
+\contentsline {subsection}{\numberline {IIa.\,4.3}\texttt {push(src, tgt, mul, div)} --- $O(k)$ Proportional Transfer}{18}{subsection.IIa.4.3}%
+\contentsline {subsection}{\numberline {IIa.\,4.4}\texttt {stateAt(user, stamp)} --- $O(k)$ Exact Query}{19}{subsection.IIa.4.4}%
+\contentsline {subsection}{\numberline {IIa.\,4.5}\texttt {roll(user, amount, dt\_term)} --- $O(k)$ Sweep-and-Re-Lock}{19}{subsection.IIa.4.5}%
+\contentsline {subsection}{\numberline {IIa.\,4.6}\texttt {totalOf(user)} --- $O(1)$ Cached Query}{19}{subsection.IIa.4.6}%
+\contentsline {section}{\numberline {IIa.\,5}Time-Lock Extension}{19}{section.IIa.5}%
+\contentsline {subsection}{\numberline {IIa.\,5.1}The Token-Seconds Integral}{19}{subsection.IIa.5.1}%
+\contentsline {subsection}{\numberline {IIa.\,5.2}The $O(1)$ Depth Identity}{20}{subsection.IIa.5.2}%
+\contentsline {subsection}{\numberline {IIa.\,5.3}\texttt {more()} with Depth Tracking}{20}{subsection.IIa.5.3}%
+\contentsline {subsection}{\numberline {IIa.\,5.4}\texttt {free()} with Depth Tracking}{20}{subsection.IIa.5.4}%
+\contentsline {subsection}{\numberline {IIa.\,5.5}\texttt {push()} with Depth Tracking}{20}{subsection.IIa.5.5}%
+\contentsline {subsection}{\numberline {IIa.\,5.6}\texttt {stateAt()} with Depth}{21}{subsection.IIa.5.6}%
+\contentsline {subsection}{\numberline {IIa.\,5.7}\texttt {depthOf(user)} --- $O(1)$ Cached Depth}{21}{subsection.IIa.5.7}%
+\contentsline {subsection}{\numberline {IIa.\,5.8}Worked Example}{21}{subsection.IIa.5.8}%
+\contentsline {section}{\numberline {IIa.\,6}Invariants and Correctness Proofs}{21}{section.IIa.6}%
+\contentsline {subsection}{\numberline {IIa.\,6.1}Collision Freedom}{21}{subsection.IIa.6.1}%
+\contentsline {subsection}{\numberline {IIa.\,6.2}Depth Identity Correctness}{22}{subsection.IIa.6.2}%
+\contentsline {subsection}{\numberline {IIa.\,6.3}Cached vs Exact Invariants}{22}{subsection.IIa.6.3}%
+\contentsline {subsection}{\numberline {IIa.\,6.4}Self-Healing Correctness}{22}{subsection.IIa.6.4}%
+\contentsline {subsection}{\numberline {IIa.\,6.5}Depth Conservation Under Push}{22}{subsection.IIa.6.5}%
+\contentsline {subsection}{\numberline {IIa.\,6.6}Stale-Slot Corruption Without Free}{23}{subsection.IIa.6.6}%
+\contentsline {subsection}{\numberline {IIa.\,6.7}Non-Negativity}{23}{subsection.IIa.6.7}%
+\contentsline {subsection}{\numberline {IIa.\,6.8}Bitmap Consistency}{23}{subsection.IIa.6.8}%
+\contentsline {subsection}{\numberline {IIa.\,6.9}Permanent Lock Invariance}{23}{subsection.IIa.6.9}%
+\contentsline {section}{\numberline {IIa.\,7}Gas Analysis}{23}{section.IIa.7}%
+\contentsline {section}{\numberline {IIa.\,8}Integration}{23}{section.IIa.8}%
+\contentsline {subsection}{\numberline {IIa.\,8.1}Position Layer}{23}{subsection.IIa.8.1}%
+\contentsline {subsection}{\numberline {IIa.\,8.2}Graduated Lock Bonus/Malus}{24}{subsection.IIa.8.2}%
+\contentsline {section}{\numberline {IIa.\,9}Conclusion}{24}{section.IIa.9}%
+\contentsline {section}{\numberline {IIb.}Log-Space Compounding Index}{27}{section*.40}%
+\contentsline {section}{\numberline {IIb.\,1}Introduction}{27}{section.IIb.1}%
+\contentsline {section}{\numberline {IIb.\,2}Related Work}{27}{section.IIb.2}%
+\contentsline {section}{\numberline {IIb.\,3}Overflow Analysis}{27}{section.IIb.3}%
+\contentsline {subsection}{\numberline {IIb.\,3.1}Budget Computation}{27}{subsection.IIb.3.1}%
+\contentsline {subsection}{\numberline {IIb.\,3.2}Time-to-Overflow}{27}{subsection.IIb.3.2}%
+\contentsline {subsection}{\numberline {IIb.\,3.3}Boundedness of Other Values}{28}{subsection.IIb.3.3}%
+\contentsline {section}{\numberline {IIb.\,4}Log-Space Index}{28}{section.IIb.4}%
+\contentsline {subsection}{\numberline {IIb.\,4.1}Core Insight}{28}{subsection.IIb.4.1}%
+\contentsline {subsection}{\numberline {IIb.\,4.2}Formal Definition}{28}{subsection.IIb.4.2}%
+\contentsline {subsection}{\numberline {IIb.\,4.3}Storage Transformation}{28}{subsection.IIb.4.3}%
+\contentsline {subsection}{\numberline {IIb.\,4.4}Shipped Storage Layout}{28}{subsection.IIb.4.4}%
+\contentsline {subsection}{\numberline {IIb.\,4.5}Overflow Elimination}{29}{subsection.IIb.4.5}%
+\contentsline {subsection}{\numberline {IIb.\,4.6}Invariants}{29}{subsection.IIb.4.6}%
+\contentsline {section}{\numberline {IIb.\,5}Code Transformation}{29}{section.IIb.5}%
+\contentsline {subsection}{\numberline {IIb.\,5.1}Accrual: \texttt {\_indexOf}}{29}{subsection.IIb.5.1}%
+\contentsline {subsection}{\numberline {IIb.\,5.2}Balance Query: \texttt {totalOf}}{29}{subsection.IIb.5.2}%
+\contentsline {subsection}{\numberline {IIb.\,5.3}Lock Yield: \texttt {\_lockYieldOf}}{30}{subsection.IIb.5.3}%
+\contentsline {subsection}{\numberline {IIb.\,5.4}Per-User Snapshots}{30}{subsection.IIb.5.4}%
+\contentsline {section}{\numberline {IIb.\,6}Gas Analysis}{30}{section.IIb.6}%
+\contentsline {subsection}{\numberline {IIb.\,6.1}Theoretical Cost Model}{30}{subsection.IIb.6.1}%
+\contentsline {subsection}{\numberline {IIb.\,6.2}Empirical Benchmarks}{31}{subsection.IIb.6.2}%
+\contentsline {section}{\numberline {IIb.\,7}Precision Analysis}{31}{section.IIb.7}%
+\contentsline {subsection}{\numberline {IIb.\,7.1}Theoretical Bound}{31}{subsection.IIb.7.1}%
+\contentsline {subsection}{\numberline {IIb.\,7.2}Empirical Measurement}{31}{subsection.IIb.7.2}%
+\contentsline {subsection}{\numberline {IIb.\,7.3}Root Cause}{31}{subsection.IIb.7.3}%
+\contentsline {section}{\numberline {IIb.\,8}Adversarial Analysis}{32}{section.IIb.8}%
+\contentsline {subsection}{\numberline {IIb.\,8.1}Rounding Manipulation}{32}{subsection.IIb.8.1}%
+\contentsline {subsection}{\numberline {IIb.\,8.2}Dust Extraction via Read-Time Rounding}{32}{subsection.IIb.8.2}%
+\contentsline {subsection}{\numberline {IIb.\,8.3}Gas Griefing on Read Path}{32}{subsection.IIb.8.3}%
+\contentsline {subsection}{\numberline {IIb.\,8.4}Timestamp Sensitivity and Summary}{32}{subsection.IIb.8.4}%
+\contentsline {section}{\numberline {IIb.\,9}Limitations and Future Work}{32}{section.IIb.9}%
+\contentsline {subsection}{\numberline {IIb.\,9.1}Future Work}{32}{subsection.IIb.9.1}%
+\contentsline {section}{\numberline {IIb.\,10}Conclusion}{32}{section.IIb.10}%
+\contentsline {part}{III\hspace {1em}Theory}{35}{section*.47}%
+\contentsline {section}{\numberline {III.}Mathematical Theory \& Proofs}{37}{section*.48}%
+\contentsline {section}{\numberline {III.\,1}Mathematical Foundations}{37}{section.III.1}%
+\contentsline {subsection}{\numberline {III.\,1.1}Interest Accrual}{37}{subsection.III.1.1}%
+\contentsline {subsection}{\numberline {III.\,1.2}Time-Weighted Integration}{37}{subsection.III.1.2}%
+\contentsline {subsection}{\numberline {III.\,1.3}Oracle Price Aggregation}{37}{subsection.III.1.3}%
+\contentsline {subsection}{\numberline {III.\,1.4}Rate Limiting}{37}{subsection.III.1.4}%
+\contentsline {section}{\numberline {III.\,2}Formal Proofs}{37}{section.III.2}%
+\contentsline {subsection}{\numberline {III.\,2.1}Cascade Attenuation Proof}{37}{subsection.III.2.1}%
+\contentsline {subsection}{\numberline {III.\,2.2}Sybil Rate-Limiting}{37}{subsection.III.2.2}%
+\contentsline {subsection}{\numberline {III.\,2.3}Governance Rate Bound Proof}{38}{subsection.III.2.3}%
+\contentsline {subsection}{\numberline {III.\,2.4}MEV Front-Running Resistance}{38}{subsection.III.2.4}%
+\contentsline {section}{\numberline {III.\,3}Nash Equilibrium Analysis for Lock Adoption}{38}{section.III.3}%
+\contentsline {subsection}{\numberline {III.\,3.1}Model Setup}{38}{subsection.III.3.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.1.1}Position Types and Rates}{38}{subsubsection.III.3.1.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.1.2}Secondary Market Dynamics}{38}{subsubsection.III.3.1.2}%
+\contentsline {subsection}{\numberline {III.\,3.2}Player Utility Functions}{39}{subsection.III.3.2}%
+\contentsline {subsubsection}{\numberline {III.\,3.2.1}Supplier Utility}{39}{subsubsection.III.3.2.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.2.2}Breakeven Condition}{39}{subsubsection.III.3.2.2}%
+\contentsline {subsection}{\numberline {III.\,3.3}Breakeven Analysis by Utilization}{39}{subsection.III.3.3}%
+\contentsline {subsection}{\numberline {III.\,3.4}Liquidation Seniority Value}{39}{subsection.III.3.4}%
+\contentsline {subsection}{\numberline {III.\,3.5}Nash Equilibrium Characterization}{39}{subsection.III.3.5}%
+\contentsline {subsubsection}{\numberline {III.\,3.5.1}Equilibrium Condition}{39}{subsubsection.III.3.5.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.5.2}Utilization-Dependent Equilibria}{39}{subsubsection.III.3.5.2}%
+\contentsline {subsection}{\numberline {III.\,3.6}Protocol Margin Analysis}{39}{subsection.III.3.6}%
+\contentsline {subsubsection}{\numberline {III.\,3.6.1}Margin as Function of Lock Adoption}{39}{subsubsection.III.3.6.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.6.2}Solvency at Full Adoption}{40}{subsubsection.III.3.6.2}%
+\contentsline {subsection}{\numberline {III.\,3.7}Stability Analysis}{40}{subsection.III.3.7}%
+\contentsline {subsubsection}{\numberline {III.\,3.7.1}Multiple Equilibria}{40}{subsubsection.III.3.7.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.7.2}Equilibrium Selection}{40}{subsubsection.III.3.7.2}%
+\contentsline {subsection}{\numberline {III.\,3.8}Summary}{40}{subsection.III.3.8}%
+\contentsline {subsubsection}{\numberline {III.\,3.8.1}Equilibrium Structure}{40}{subsubsection.III.3.8.1}%
+\contentsline {subsubsection}{\numberline {III.\,3.8.2}Cascade Dynamics and Keeper Sizing}{40}{subsubsection.III.3.8.2}%
+\contentsline {subsubsection}{\numberline {III.\,3.8.3}Solvency Guarantees}{41}{subsubsection.III.3.8.3}%
+\contentsline {subsubsection}{\numberline {III.\,3.8.4}Welfare}{41}{subsubsection.III.3.8.4}%
+\contentsline {part}{IV\hspace {1em}Evaluation}{43}{section*.52}%
+\contentsline {section}{\numberline {IV.}Simulations \& Risk Analysis}{45}{section*.53}%
+\contentsline {section}{\numberline {IV.\,1}Capacity Accumulation Simulation}{45}{section.IV.1}%
+\contentsline {subsection}{\numberline {IV.\,1.1}Cap Function Components}{45}{subsection.IV.1.1}%
+\contentsline {subsection}{\numberline {IV.\,1.2}Simulation Algorithm}{45}{subsection.IV.1.2}%
+\contentsline {subsection}{\numberline {IV.\,1.3}Convergence Behavior}{45}{subsection.IV.1.3}%
+\contentsline {subsection}{\numberline {IV.\,1.4}Representative Output}{45}{subsection.IV.1.4}%
+\contentsline {subsection}{\numberline {IV.\,1.5}Multi-Account Share Dynamics}{45}{subsection.IV.1.5}%
+\contentsline {subsection}{\numberline {IV.\,1.6}Limitations}{46}{subsection.IV.1.6}%
+\contentsline {section}{\numberline {IV.\,2}Cascade Simulation Implementation}{46}{section.IV.2}%
+\contentsline {subsection}{\numberline {IV.\,2.1}Multi-Scenario Comparison}{46}{subsection.IV.2.1}%
+\contentsline {subsection}{\numberline {IV.\,2.2}Detailed Per-Scenario Analysis}{46}{subsection.IV.2.2}%
+\contentsline {subsection}{\numberline {IV.\,2.3}Algorithm}{47}{subsection.IV.2.3}%
+\contentsline {subsection}{\numberline {IV.\,2.4}Market Impact Model}{47}{subsection.IV.2.4}%
+\contentsline {subsection}{\numberline {IV.\,2.5}Limitations}{47}{subsection.IV.2.5}%
+\contentsline {section}{\numberline {IV.\,3}TWAP Oracle Simulations}{47}{section.IV.3}%
+\contentsline {subsection}{\numberline {IV.\,3.1}Decay Factor Visualization}{47}{subsection.IV.3.1}%
+\contentsline {subsection}{\numberline {IV.\,3.2}Price Shock Response}{47}{subsection.IV.3.2}%
+\contentsline {subsection}{\numberline {IV.\,3.3}Spread Scaling by Liquidity}{48}{subsection.IV.3.3}%
+\contentsline {subsection}{\numberline {IV.\,3.4}Complete Spread Analysis}{48}{subsection.IV.3.4}%
+\contentsline {subsection}{\numberline {IV.\,3.5}On-Chain Scenario Testing}{48}{subsection.IV.3.5}%
+\contentsline {subsubsection}{\numberline {IV.\,3.5.1}Token/Liquidity Configurations}{49}{subsubsection.IV.3.5.1}%
+\contentsline {subsubsection}{\numberline {IV.\,3.5.2}Mid-Price Manipulation Resistance}{49}{subsubsection.IV.3.5.2}%
+\contentsline {paragraph}{Key observations.}{49}{section*.65}%
+\contentsline {subsubsection}{\numberline {IV.\,3.5.3}Spread Auto-Widening Response}{49}{subsubsection.IV.3.5.3}%
+\contentsline {subsubsection}{\numberline {IV.\,3.5.4}Decimal Invariance}{49}{subsubsection.IV.3.5.4}%
+\contentsline {subsubsection}{\numberline {IV.\,3.5.5}Strengths and Weaknesses}{49}{subsubsection.IV.3.5.5}%
+\contentsline {paragraph}{Strengths.}{49}{section*.67}%
+\contentsline {paragraph}{Weaknesses (inherent to DECAY\_12HL).}{49}{section*.68}%
+\contentsline {section}{\numberline {IV.\,4}Bad Debt Risk Quantification}{50}{section.IV.4}%
+\contentsline {subsection}{\numberline {IV.\,4.1}Introduction}{50}{subsection.IV.4.1}%
+\contentsline {subsection}{\numberline {IV.\,4.2}Oracle Lag Model}{50}{subsection.IV.4.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.2.1}EMA Update Semantics}{50}{subsubsection.IV.4.2.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.2.2}Step-Crash Convergence}{50}{subsubsection.IV.4.2.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.2.3}Phantom-Healthy Windows}{51}{subsubsection.IV.4.2.3}%
+\contentsline {subsubsection}{\numberline {IV.\,4.2.4}Worst-Case Blind Time}{51}{subsubsection.IV.4.2.4}%
+\contentsline {subsection}{\numberline {IV.\,4.3}Monte Carlo Simulation}{51}{subsection.IV.4.3}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.1}Price Process}{51}{subsubsection.IV.4.3.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.2}Simulation Design}{51}{subsubsection.IV.4.3.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.3}Results}{52}{subsubsection.IV.4.3.3}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.4}Bad Debt Distribution}{52}{subsubsection.IV.4.3.4}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.5}Drawdown--Bad Debt Relationship}{52}{subsubsection.IV.4.3.5}%
+\contentsline {subsubsection}{\numberline {IV.\,4.3.6}Liquidation Delay Distribution}{52}{subsubsection.IV.4.3.6}%
+\contentsline {subsection}{\numberline {IV.\,4.4}Analytical Bound}{53}{subsection.IV.4.4}%
+\contentsline {subsubsection}{\numberline {IV.\,4.4.1}Instant Liquidation Baseline}{53}{subsubsection.IV.4.4.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.4.2}Oracle Delay Penalty}{53}{subsubsection.IV.4.4.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.4.3}Conservative Upper Bound}{53}{subsubsection.IV.4.4.3}%
+\contentsline {subsection}{\numberline {IV.\,4.5}Safe Operating Region}{53}{subsection.IV.4.5}%
+\contentsline {subsubsection}{\numberline {IV.\,4.5.1}Safety Criterion}{53}{subsubsection.IV.4.5.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.5.2}Safe Configurations}{53}{subsubsection.IV.4.5.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.5.3}Key Observations}{54}{subsubsection.IV.4.5.3}%
+\contentsline {subsection}{\numberline {IV.\,4.6}Sensitivity Analysis}{54}{subsection.IV.4.6}%
+\contentsline {subsubsection}{\numberline {IV.\,4.6.1}Parameter Rankings}{54}{subsubsection.IV.4.6.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.6.2}Interaction Effects}{55}{subsubsection.IV.4.6.2}%
+\contentsline {subsection}{\numberline {IV.\,4.7}Partial Liquidation}{55}{subsection.IV.4.7}%
+\contentsline {subsection}{\numberline {IV.\,4.8}Cross-Validation}{55}{subsection.IV.4.8}%
+\contentsline {subsubsection}{\numberline {IV.\,4.8.1}Oracle Model vs.\ Solidity}{55}{subsubsection.IV.4.8.1}%
+\contentsline {subsubsection}{\numberline {IV.\,4.8.2}Phantom Window Verification}{55}{subsubsection.IV.4.8.2}%
+\contentsline {subsubsection}{\numberline {IV.\,4.8.3}Bound Conservatism}{55}{subsubsection.IV.4.8.3}%
+\contentsline {subsection}{\numberline {IV.\,4.9}Deployment Recommendations}{55}{subsection.IV.4.9}%
+\contentsline {subsection}{\numberline {IV.\,4.10}Conclusion}{56}{subsection.IV.4.10}%
+\contentsline {part}{V\hspace {1em}Reference}{57}{section*.82}%
+\contentsline {section}{\numberline {V.}References \& Glossary}{59}{section*.83}%
+\contentsline {section}{References}{59}{section*.84}%
+\contentsline {section}{Glossary}{61}{section*.86}%

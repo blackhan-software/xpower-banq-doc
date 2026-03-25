@@ -1,0 +1,124 @@
+================================================================================
+REDEEM TRANSACTION ANALYSIS (Warm)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_redeem_warm()
+Gas Used:         314,558  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 375,000
+User:             self — full interaction history (supply, borrow, settle, redeem)
+Amount:           100 AVAX (100e18)
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+
+Prior state of `self`:
+  - supply(AVAX, 1000 AVAX)        already done in setUp
+  - borrow(AVAX, maxBorrow/4)      already done in setUp
+  - settle(AVAX, debt/10)          already done in setUp
+  - redeem(AVAX, supply/20)        already done in setUp
+
+Modifiers:        nonReentrant only (no ratelimited, no powlimited)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.redeem(AVAX, 100e18)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- _redeem(self, AVAX, 100e18)
+  |     +-- SupplyPosition.burn(self, 100e18)
+  |     |     +-- _accrueInterest(self)
+  |     |     |     +-- totalOf(self) > 0
+  |     |     |     +-- Calculate and accrue interest
+  |     |     |
+  |     |     +-- _burn(self, 100e18)
+  |     |           +-- _decreaseHolders(existing, 100e18)
+  |     |           |     +-- balanceOf(self) >> threshold
+  |     |           |     +-- No _largeHolders update
+  |     |           |
+  |     |           +-- _reindexLess(self, 100e18)
+  |     |           |     +-- _principalOf[self] -= amt   [WARM SSTORE: X->Y]
+  |     |           |     +-- _userIndex[self] = index    [WARM SSTORE: X->Y]
+  |     |           |
+  |     |           +-- super._update(self, 0, 100e18)
+  |     |           |     +-- _totalSupply -= value       [WARM SSTORE]
+  |     |           |     +-- _balances[self] -= value    [WARM SSTORE: X->Y]
+  |     |           |     +-- emit Transfer               [Transfer #1 - sAVAX burn]
+  |     |           |
+  |     |           +-- _reindex()
+  |     |                 +-- Vault.util() call
+  |     |                 +-- _index_ray, _stamp updates  [WARM SSTORE]
+  |     |                 +-- emit Reindex                [Reindex #1]
+  |     |
+  |     +-- Convert assets to vault shares
+  |     +-- vault.redeem(shares, self, pool)
+  |           +-- vAVAX burn (pool shares)                [Transfer #2 - vAVAX burn]
+  |           +-- AVAX transfer to self                   [Transfer #3 - AVAX]
+  |           +-- emit Withdraw                           [Withdraw event]
+  |
+  +-- _checkHealth(self)
+  |     +-- _healthOf(self) calculation
+  |     +-- Reads supply + borrow positions (WARM)
+  |     +-- Oracle price queries
+  |     +-- Requires wnav_supply >= wnav_borrow
+  |
+  +-- emit Redeem                                         [Redeem event]
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy only)                 | ~3,000   | 1.0%
+SupplyPosition.burn()                       | ~45,000  | 14.3%
+  - Warm SSTOREs                           | ~11,600  |
+  - Interest accrual                       | ~15,000  |
+  - Computation + events                   | ~18,400  |
+Vault.redeem() + vAVAX burn                | ~85,000  | 27.0%
+  - Share conversion + ERC4626             | ~15,000  |
+  - vAVAX burn                             | ~30,000  |
+  - AVAX transfer to user                  | ~40,000  |
+_checkHealth() - health computation         | ~120,000 | 38.1%
+  - _healthOf() calculation (warm reads)   | ~80,000  |
+  - Oracle price queries                   | ~40,000  |
+Pool Redeem event + misc                   | ~61,558  | 19.6%
+--------------------------------------------|----------|------
+TOTAL                                       | 314,558  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. Gas is virtually IDENTICAL to cold redeem (314,558 vs 314,549)
+2. Only 9 gas difference — within measurement noise
+3. All supply-position storage is already warm in BOTH cases
+4. _checkHealth() dominates at ~38% (oracle queries constant regardless)
+5. No rate limiting or PoW limiting (only nonReentrant)
+6. Vault.redeem() accounts for ~27% (ERC4626 share conversion overhead)
+
+================================================================================
+WHY COLD == WARM FOR REDEEM
+================================================================================
+
+The "cold" redeem user (cold2) already has warm supply-position storage
+because they supplied in setUp. The "warm" redeem user (self) also has
+warm storage from their prior supply.
+
+Since redeem only BURNS supply position tokens (never writes to new
+user-specific slots), there are no cold SSTOREs in either case.
+
+The only path to a truly "cold" redeem would be if a user could redeem
+without ever having supplied — which is impossible (you must supply
+before you can redeem).
+
+================================================================================

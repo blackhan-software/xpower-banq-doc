@@ -1,0 +1,466 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{subfiles}
+\usepackage{xr}
+
+\input{shared/banq-preamble}
+\input{shared/banq-meta}
+\input{shared/banq-bundle}
+
+% Resolve cross-document references when banq-ref is built standalone.
+% In bundle mode this is a no-op since all labels live in the same hyperref namespace.
+\ifbundle\else
+\externaldocument{004.banq-mtp/banq-mtp}
+\externaldocument{005.banq-sim/banq-sim}
+\externaldocument{001.banq-pro/banq-pro}
+\externaldocument{002.banq-lck/banq-lck}
+\externaldocument{003.banq-log/banq-log}
+\fi
+
+\title{\textbf{\Large XPower Banq: References \& Glossary}\\[0.3em]
+\normalsize Consolidated Bibliography and Comprehensive Terminology\\
+for the XPower Banq Lending Protocol Suite}
+
+\author{
+    \banqAuthor\thanks{\banqAuthorContact}
+}
+
+\date{}
+
+\ifbundle\else
+\renewcommand{\thepage}{REF/\arabic{page}}
+\fi
+
+\begin{document}
+
+\ifbundle\else
+\maketitle
+\input{shared/arxiv-tag}
+
+\begin{abstract}
+This document is the consolidated reference manual for the XPower Banq protocol suite. It collects the comprehensive bibliography spanning all five companion papers~\cite{wp,lck,log,mtp,sim} and a glossary of over 120~terms covering protocol mechanisms, mathematical notation, simulation parameters, and DeFi terminology. The glossary entries cross-reference theorems and definitions in the theory and simulation papers; the document is intended to be read alongside those companions rather than as a standalone preprint.
+\end{abstract}
+
+\textbf{Keywords:} XPower Banq, glossary, bibliography, reference manual
+\fi
+
+% Paper divider. \banqPaper's body is \ifbundle-guarded, so this is a no-op
+% in standalone mode (the standalone front matter above provides the title
+% page). In bundle mode it emits the "References & Glossary" cover page that
+% precedes both the bibliography and the glossary, matching how Parts I–IV
+% have their child paper emit the divider.
+\banqPaper{References \& Glossary}{Consolidated Bibliography and Comprehensive Terminology for the XPower Banq Lending Protocol Suite}
+
+% ==============================================================================
+% Bibliography. Always input — \begin{thebibliography} is also \ifbundle-aware
+% in standalone children, but banq-ref is the canonical home of the
+% consolidated list, so it always renders here. In bundle mode we additionally
+% register the heading in the TOC and PDF outline (article's auto-emitted
+% \section*{References} is otherwise unnumbered and not auto-added to the TOC).
+% ==============================================================================
+\ifbundle
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\fi
+\input{shared/banq-bibliography}
+\ifbundle\clearpage\fi
+
+\section*{Glossary}
+\label{ref:glossary}
+\addcontentsline{toc}{section}{Glossary}
+
+\noindent This glossary consolidates all terminology from the protocol whitepaper~\cite{wp}, the engineering primitives~\cite{lck,log}, the mathematical theory~\cite{mtp}, and the simulations~\cite{sim}. Entries marked with a dagger~($\dagger$) are specific to the bad-debt risk analysis (\cite{sim}).
+
+\begin{description}[style=nextline, leftmargin=2.5em, labelindent=0em, font=\normalfont\bfseries]
+
+% === A ===
+
+\item[Accrual] The periodic update of the global index to reflect newly earned interest. In the multiplicative form, accrual multiplies the index by $\exp(r)$; in the log-space form, it adds $r$ to the index.
+
+\item[Accrual Path] The code path executed during a reindex event. Also called the \emph{write path}, since it mutates the stored index.
+
+\item[Acma] Access manager---wrapper around OpenZeppelin's \texttt{AccessManager}; manages three-tier roles per capability---the bare function-caller role (e.g.\ \texttt{SET\_TARGET}), its \texttt{\_ADMIN} (grants/revokes the caller role), and its \texttt{\_GUARD} (emergency revoke). Role IDs are derived via \texttt{keccak256} of the role name and a domain string in \texttt{Roles.sol}.
+
+\item[$A(n)$\,$\dagger$] Absorption fraction---the share of the log-space deviation absorbed after $n$ oracle refreshes: $A(n) = 1 - \alpha^{n-1}$ for $n \geq 2$, with $A(0) = A(1) = 0$ due to the one-refresh delay.
+
+\item[Annualised Rate ($r_{\text{annual}}$)] The interest rate expressed per year in WAD. Converted to per-period yield via $r_{\text{annual}} \times \Delta t / \textsc{year}$.
+
+\item[$\alpha$\,$\dagger$] EMA decay parameter of the log-space TWAP oracle. Governs tracking speed: $\alpha = 0.5^{1/\text{HL}}$ where HL is the half-life in refreshes. Default $\alpha \approx 0.944$ (12 refreshes; with the default 1-hour refresh interval enforced by \texttt{PowLimited(1 hours)} in \texttt{Oracle.sol}, this is a 12-hour half-life).
+
+\item[AMM] Automated Market Maker---decentralized exchange architecture using liquidity pools and mathematical formulas for price discovery.
+
+\item[APY Differential] Difference in annual percentage yield between locked and unlocked positions; with spread $s$, supplier differential is $\Delta r \approx 0.09 \times r_{\text{base}}$.
+
+\item[Asymptotic Transition] Parameter change mechanism where values approach targets gradually via time-weighted mean rather than discrete jumps. See Lethargic Governance.
+
+% === B ===
+
+\item[Bad Debt] Uncollectable debt arising when a position's collateral value falls below its debt value; protocol absorbs the loss. Quantified in \cite{sim}.
+
+\item[Bitmap] 16-bit mask tracking which slots contain active locks. Stored in the lower 16 bits of \texttt{cache}.
+
+\item[$\text{BD}_{\text{inst}}$\,$\dagger$] Bad debt under instant (zero-delay) liquidation. The baseline shortfall when a position's true collateral value $H_0(1{-}\delta)$ falls below LTV.
+
+\item[$\text{BD}_{\max}$\,$\dagger$] Conservative upper bound on bad debt (Theorem~\ref{thm:bd-bound}), incorporating the oracle delay penalty: $\text{BD}_{\max} \leq \text{BD}_{\text{inst}} \cdot (1 + W_{\max}\,\sigma_h / \delta)$.
+
+\item[Beta Cap] Position limit following \mbox{$12\lambda(1-\lambda)^2$} distribution where $\lambda$ is the user's fraction of total supply; peaks at $\lambda = 1/3$ and vanishes at boundaries.
+
+\item[Bid/Ask] Price quotes for selling (bid) vs.\ buying (ask) an asset; spread provides manipulation resistance.
+
+\item[Block Stuffing] Attack filling blocks with transactions to delay or censor others; prevented by PoW requirements.
+
+\item[Breakeven Period] Minimum holding period $T^*$ for lock adoption to be profitable; approximately $T^* \approx D / \Delta r$ where $D$ is secondary market discount and $\Delta r$ is APY differential.
+
+\item[Borrow Position] ERC20 token representing debt obligation; uses inverted transfer semantics where \texttt{transfer} pulls debt.
+
+\item[Borrow Rate] The interest rate charged to borrowers, computed as $r_{\text{base}} \times (1 + s)$ where $s$ is the spread parameter. Capped at $2 \times (1 + s) \times 10^{18}$.
+
+\item[Break-Even Ratio ($R$)] The on-chain read/write ratio at which the log-space transformation is gas-neutral. Computed as $R = 1{,}200 / 1{,}100 \approx 1.09$.
+
+% === C ===
+
+\item[Calculator] Library providing overflow-safe $\log_2$ and $\exp_2$ operations for the oracle pipeline, wrapping PRBMath's UD60x18 functions. Defines the bias constant $\texttt{LOG2\_ONE} = \log_2(10^{18}) \approx 59.79$ (internal \texttt{private constant}, scaled $\times 10^{18}$ as a UD60x18 value), used to convert between raw \texttt{uint256} values and UD60x18 fixed-point representation in the paired functions \texttt{Log2()}/\texttt{Exp2()}.
+
+\item[Cap Floor] Minimum position cap ensuring users can enter even when $\lambda \to 0$; prevents cold start problem.
+
+\item[Capital Efficiency] Borrowing power per unit of collateral; higher LTV ratios provide greater capital efficiency.
+
+\item[Cascade Amplification] Ratio of actual liquidations to initial shock-induced liquidations; measures feedback loop severity. Simulated in \cite{sim}.
+
+\item[Cascade Attenuation] Reduction of liquidation-cascade depth by factor~$(1{-}\phi)$, where $\phi$ is the locked fraction of the position; the central result of Theorem~\ref{thm:cascade}.
+
+\item[Circuit Breaker] Mechanism halting cascading failures; locked positions act as circuit breakers during market stress.
+
+\item[Cold Start] Problem where first depositor faces zero or minimal cap due to $\lambda \to 0$; solved by cap floor mechanism.
+
+\item[Collateral] Assets deposited to back borrowed positions; must exceed borrow value by the over-collateralization ratio.
+
+\item[Compounding Index] A global accumulator tracking cumulative interest. Multiplicative form: $I = I_0 \prod \exp(r_i)$. Log-space form: $L = \sum r_i$.
+
+\item[Conservation] The invariant that $\texttt{totalOf}(u) = p_u \cdot \exp(L - L_u)$ holds for all users at all times, exact up to WAD rounding.
+
+\item[Constant Product] AMM pricing formula ($x \cdot y = k$) used to derive bid/ask quotes from reserve balances.
+
+\item[Coordination Game] Strategic interaction where player payoffs depend on aggregate choices; lock adoption exhibits coordination dynamics where seniority value decreases as adoption increases.
+
+\item[$\text{CVaR}(99\%)$\,$\dagger$] Conditional Value-at-Risk at the 99th percentile---the expected bad debt in the worst 1\% of simulated paths.
+
+% === D ===
+
+\item[Debt Assumption] Liquidation model where the liquidator assumes the victim's debt rather than repaying it; enables capital-efficient liquidation without requiring liquid capital.
+
+\item[Decay Factor] EMA smoothing parameter $\alpha$; controls how quickly older price observations lose influence. See also Half-Life.
+
+\item[$\delta$\,$\dagger$] Crash fraction. An instantaneous price drop from $p_0$ to $p_0(1{-}\delta)$; e.g.\ $\delta = 0.50$ is a 50\% crash.
+
+\item[Depth ($\Sigma$)] Cached epoch-weighted sum $\sum v_i(e_i{+}1)$ enabling $O(1)$ token-second reconstruction.
+
+\item[Depth Identity] The algebraic identity $D = \Sigma Q - Tt + pL$ (Theorem~\ref{thm:depth-identity}) that converts the $O(k)$ token-seconds sum into an $O(1)$ cached computation.
+
+\item[Difficulty] PoW puzzle hardness parameter; governance-adjustable per operation type to tune spam resistance.
+
+\item[Dual Approval] Transfer model requiring approval from both sender and receiver; used for borrow position transfers.
+
+\item[Dust Extraction] A theoretical attack exploiting rounding errors to extract small token amounts. Bounded at $\leq 2$~wei per \texttt{totalOf} query in the log-space form.
+
+% === E ===
+
+\item[E-fold] One unit of natural-logarithmic growth; a factor of $e \approx 2.718$. The RAY index has ${\sim}115$ e-folds before overflow.
+
+\item[Enlisting] Governance-approved process to add new tokens to a pool; subject to time delays for existing feed modifications.
+
+\item[EMA] Exponential Moving Average---smoothing technique giving exponentially decreasing weight to older observations. Applied in log-space for TWAP oracle.
+
+\item[Entry Fee] Deposit fee charged when supplying assets to a vault; accrues to existing depositors.
+
+\item[Epoch] Absolute quarter index $e = \lfloor t/Q \rfloor$. Each epoch spans exactly $Q$ seconds.
+
+\item[ERC20] Ethereum token standard defining transfer, approve, and balance interfaces; basis for position tokens.
+
+\item[ERC4626] Tokenized vault standard extending ERC20 with deposit/withdraw mechanics; basis for XPower Banq vaults.
+
+\item[Exit Fee] Withdrawal fee charged when redeeming assets from a vault; discourages short-term liquidity cycling.
+
+% === F ===
+
+\item[Fixed Token List] Architecture requiring predetermined token sets per pool; ensures predictable collateral requirements.
+
+\item[Flash Loan] Uncollateralized loan that must be repaid within the same transaction.
+
+\item[Formal Verification] Mathematical proof of smart contract correctness; provides stronger guarantees than testing alone.
+
+\item[Front-running] Inserting a transaction before a known pending transaction to profit from its price impact.
+
+% === G ===
+
+\item[Gas] Ethereum transaction execution cost; measured in gas units multiplied by gas price.
+
+\item[Geomean Spread] Bidirectional geometric mean of relative spreads from forward and reverse AMM queries; stored in log-space as $\log_2(1 + s_{\text{geo}})$. Provides symmetric, manipulation-resistant spread estimation.
+
+\item[Governance Cycle] Single parameter change period with minimum duration (e.g., monthly); bounds rate of protocol changes.
+
+\item[Growth Factor] The ratio $G = \exp(L - L_u)$ by which a user's principal has grown since their last snapshot.
+
+% === H ===
+
+\item[$H_0$\,$\dagger$] Initial health factor of a position: $H_0 = (\text{supply} \times w_s) / (\text{borrow} \times w_b)$. Liquidation triggers when the oracle-observed health $H_{\text{oracle}} < 1$.
+
+\item[Half-Life] Time for EMA weight to decay to 50\%; determines TWAP responsiveness to new price observations. \cite[\S C]{wp} tabulates decay factors.
+
+\item[Hash Rate] Computational power for PoW puzzle solving, measured in hashes per second; determines solve time.
+
+\item[Health Check] Validation performed after operations ensuring health factor $H \geq 1$; reverts if violated.
+
+\item[Health Factor] Ratio of weighted supply value to weighted borrow value: $H = \sum w_s V_s / \sum w_b V_b$. Liquidation occurs when $H < 1$.
+
+\item[Holder-Count Scaling] Sybil resistance mechanism using the $\sqrt{n+2}$ divisor; creating accounts increases $n$, reducing per-account cap gains.
+
+\item[Holder Floor] Governable lower bound on the effective holder count used in the cap divisor; $\texttt{largeHolders()} = \max(\text{real\_holders},\, n_{\min})$, with $n_{\min}$ a lethargic governance parameter capped at $\texttt{Constant.MIN\_HOLDERS} = 10^{18}$ (\texttt{Constant.sol:75}).
+
+% === I ===
+
+\item[Index] Logarithmic accumulated-rate index stored in WAD (18 decimals) inside the packed state word; per-user balance growth is $\exp(I_{\text{global}} - I_{\text{user}})$, the exponential of the log-space delta. See companion paper \cite{log} for the construction.
+
+\item[Initial Lock Period] Mandatory delay before first parameter change after deployment; prevents immediate manipulation.
+
+\item[Integrator] Library computing $\Delta$-stamp weighted arithmetic means over (timestamp, value) tuples; accumulates area $\sum v_i \cdot \Delta t_i$ and divides by elapsed time. Used by the \texttt{Parameterized} base contract to implement asymptotic parameter transitions in lethargic governance (\S6 of~\cite{wp}).
+
+\item[Interest Rate Model] Utilization-based formula determining borrow/supply APY; slope increases sharply above kink. Formalized in \cite{mtp}.
+
+\item[Inverted Transfer] Borrow position transfer semantics where \texttt{transfer(from, amount)} pulls debt FROM the first parameter rather than pushing to it. See \S4.2 of~\cite{wp}.
+
+\item[Iteration Cap] Maximum capacity gain per governance-defined period (e.g., per week); bounds accumulation rate. Simulated in \cite{sim}.
+
+% === K ===
+
+\item[Kink] Utilization threshold (e.g., 90\%) where interest rate slope increases; incentivizes liquidity retention.
+
+% === L ===
+
+\item[Lambda ($\lambda$)] Balance fraction $B/S$; user's holdings divided by total supply.
+
+\item[Large Holder] Account holding $\geq 1$ full token unit; tracked for cap calculations.
+
+\item[Leading Zeros] PoW validation metric counting zero nibbles at start of hash; determines if difficulty threshold is met.
+
+\item[Lethargic Governance] Governance model with time-delayed, bounded parameter transitions. Values approach targets asymptotically, bounded to $0.5\times$--$2\times$ per governance cycle. See \cite[\S A]{wp}.
+
+\item[Liquidation] Forced closure of an unhealthy position ($H < 1$); XPower Banq uses debt assumption model.
+
+\item[Liquidation Cascade] Destructive feedback loop where forced sales depress prices, triggering further liquidations. Modeled in \cite{sim}.
+
+\item[Liquidation Seniority] Priority in liquidation order; locked positions gain \emph{de facto} seniority because liquidators prefer unlocked positions for immediate liquidity.
+
+\item[Liquidation-Recovery Haircut ($\kappa$)\,$\dagger$] Fraction of collateral value lost to slippage and gas during liquidation; applied to the partial-liquidation recovery model.
+
+\item[Liquidity Buffer] Reserve of unutilized assets available for withdrawals; maintained via optimal utilization targeting.
+
+\item[Lock Adoption] Aggregate fraction $\bar{\rho}$ of positions that are locked across the protocol; equilibrium adoption varies with utilization regime. Analyzed in \cite{mtp}.
+
+\item[Lock Bonus] Additional interest earned by locked suppliers; percentage of interest accrued, bounded by spread.
+
+\item[Lock Depth] The weighted sum $\sum v_i \times (e_i + 1)$ across a user's time-locked positions, where $v_i$ is the locked value and $e_i$ is the epoch. Used in lock bonus/malus computation.
+
+\item[Lock Malus] Interest \emph{reduction} for locked borrowers; percentage of interest owed, bounded by spread.
+
+\item[Lock Ratio ($\rho$)] Fraction of position that is locked; $\rho = \text{lock}/\text{balance} \in [0, 1]$.
+
+\item[Lock Yield] The {\relpenalty=500\binoppenalty=700 $\texttt{rate} \times \texttt{depth} \times (\exp(\Delta L) - 1) / (10^{18} \times \texttt{LOCK\_TIME})$} bonus or malus applied to locked positions, where \texttt{LOCK\_TIME} is the maximum lock horizon in seconds (16 quarterly slots $= 48$~months $\approx 1.26 \times 10^{8}$~s; \texttt{Lock.sol:62}).
+
+\item[LOCK\_TERM ($Q$)] One quarter $\approx 91.3$ days---the epoch duration and ring-buffer granularity.
+
+\item[LOCK\_TIME ($L$)] $16 \times Q \approx 48$ months---maximum lock duration and permanent lock depth cap.
+
+\item[Log-Normal Distribution] Statistical distribution where logarithm is normally distributed; used to model position sizes in simulations (\cite{sim}).
+
+\item[Log-Space Index ($L$)] The cumulative sum of per-period WAD yields, stored in \texttt{uint256}. Initialised to~0. Grows linearly (additively).
+
+\item[Log-Space Oracle] Oracle architecture storing prices as $\log_2(\text{price})$ and spreads as $\log_2(1 + s)$; enables EMA smoothing as geometric-mean temporal averaging.
+
+\item[Log-Sum-Exp] The numerical identity $\sum \log x_i = \log \prod x_i$, used classically to avoid overflow in iterated products. The theoretical basis for the log-space index.
+
+\item[LTV] Loan-to-Value ratio---maximum borrowing power as fraction of collateral value; default $w_s/w_b = 170/255 \approx 66.67\%$.
+
+% === M ===
+
+\item[Market Depth] Total volume that can be traded before significantly moving price; inverse of market impact coefficient.
+
+\item[Market Impact] Price change from selling assets; coefficient $k$ relates volume to price depression.
+
+\item[Market Impact Coefficient] Constant $k$ in linear price impact model $\Delta p = k \cdot V$; relates sell volume to price depression. Used in cascade simulation (\cite{sim}).
+
+\item[Memory Decay] Weight $\lambda^n$ retained by historical price observations in EMA after $n$ refresh periods; after half-life $h$ periods, weight decays to 50\%.
+
+\item[Mempool] Transaction waiting area before block inclusion; PoW prevents flooding attacks against mempool.
+
+\item[Merton Jump-Diffusion] Asset-price model with continuous Brownian motion plus a Poisson-driven jump component; basis for the Monte Carlo bad-debt simulation.
+
+\item[MEV] Maximal Extractable Value---profit available from transaction ordering, insertion, or censorship.
+
+\item[Modular Arithmetic] Solidity's \texttt{unchecked} arithmetic where values wrap at $2^{256}$. The additive log-index is compatible with modular subtraction for computing $\Delta L$.
+
+\item[Monotonicity] The property that $L(t)$ is non-decreasing: each accrual adds a non-negative yield, so the index never decreases.
+
+\item[Monte Carlo Simulation] Randomized numerical method using many simulated paths to estimate statistical distributions; used for bad-debt risk quantification (\cite{sim}) and TWAP analysis (\cite{sim}).
+
+\item[Multiplicative Bounds] Constraint limiting parameter changes to $0.5\times$--$2\times$ per governance cycle; prevents rapid manipulation.
+
+\item[Multiplicative Index ($I$)] The running product of exponential growth factors, stored at RAY ($10^{27}$) precision. Grows exponentially.
+
+% === N ===
+
+\item[Nash Equilibrium] Stable strategic state where no player can improve their payoff by unilaterally changing strategy; lock adoption exhibits utilization-dependent equilibria. Analyzed in \cite{mtp}.
+
+\item[Nonce] Random value in PoW puzzle; combined with transaction data must hash below difficulty target.
+
+% === O ===
+
+\item[Observation Window] Time available for detecting suspicious activity during gradual capacity accumulation; enabled by iteration caps.
+
+\item[Optimal Utilization] Target utilization $U^*$ (e.g., 90\%) where interest rate curve has its kink; balances efficiency and liquidity.
+
+\item[Oracle Aggregation] Combining prices from multiple feeds (TraderJoe, Chainlink) using log-space EMA smoothing with bidirectional geomean spread computation.
+
+\item[Overflow Horizon] The time until a stored value exceeds $2^{256}$. For the multiplicative RAY index: ${\sim}29$--$1{,}154$~years depending on rate. For the log-space WAD index: ${\sim}10^{58}$~years.
+
+\item[Over-collateralization] Requirement that collateral value exceed borrow value; enforced via health factor $H > 1$.
+
+% === P ===
+
+\item[Partial Liquidation] Liquidation of $2^{-e}$ fraction of positions rather than full liquidation.
+
+\item[$p_{\text{crit}}$\,$\dagger$] Critical oracle price ratio that triggers liquidation: $p_{\text{crit}} = 1 / H_0$. The oracle fires when $\hat{p}(n)/p_0 < p_{\text{crit}}$.
+
+\item[Permanent Lock] Irrevocable lock with $\texttt{dt\_term} = 2^{256}{-}1$. Stored in the upper 120 bits of \texttt{cache} (\texttt{cache.perma}), not in a ring slot. Contributes $p \cdot L$ to token-seconds at query time.
+
+\item[Phantom-healthy\,$\dagger$] A position state where the oracle reports $H_{\text{oracle}} \geq 1$ (solvent) but the true health $H_{\text{true}} < 1$ (underwater). Arises from oracle staleness during crashes (Definition~\ref{def:phantom}).
+
+\item[Pool] Main lending/borrowing contract managing supply, borrow, settle, and redeem operations with health checks.
+
+\item[Pool-to-Depth Ratio] Pool size as fraction of market depth; determines cascade severity under price shocks.
+
+\item[Position Lock] Fraction $\phi$ of a position restricted from redemption or sale; prevents liquidation cascades.
+
+\item[Position Transfer] Movement of supply or borrow position tokens between accounts. Supply uses standard ERC20 push; borrow uses inverted pull semantics. Formalized in \S4.2 of~\cite{wp}.
+
+\item[PoW] Proof-of-Work---computational puzzle required for certain operations to prevent spam.
+
+\item[PRBMath] A Solidity library providing fixed-point \texttt{exp()}, \texttt{ln()}, \texttt{mul()}, and related functions at WAD ($10^{18}$) precision. The \texttt{exp()} function reverts when its input exceeds $133.08 \times 10^{18}$.
+
+\item[Price Feed] External data source providing asset prices; XPower Banq supports TraderJoe and Chainlink feeds.
+
+\item[Price Shock] Sudden price change used to test TWAP responsiveness; EMA smoothing dampens shock impact based on half-life configuration.
+
+\item[Principal] Base position amount before interest accrual; multiplied by index ratio to get current balance.
+
+\item[Protocol Margin] Revenue retained by protocol from interest spread; $M(\bar{\rho}) = 2s(1-\bar{\rho})$ where $s$ is spread and $\bar{\rho}$ is lock adoption rate.
+
+\item[Protocol Parameters] Governable constants (weights, decay, spread, rates, caps) that control protocol behavior; each transitions lethargically. Enumerated in \cite[\S A]{wp}.
+
+% === Q ===
+
+\item[Quote / TWAP packed word] Log-space price representation packed into a \texttt{uint256} word with four fields: \texttt{mid} ($\log_2(\text{price} \times 10^{18})$, biased by \texttt{LOG2\_ONE}), \texttt{rel} ($\log_2(1 + s_{\text{geo}})$ where $s_{\text{geo}}$ is the bidirectional geomean spread), \texttt{utc} (timestamp), and \texttt{dec} (decimal-pair packed as \texttt{(dec\_source << 8) | dec\_target} for unit normalisation). The containing struct is \texttt{TWAP \{ uint256 last; uint256 mean; \}} with two such words per pair: \texttt{last} for the most recent observation and \texttt{mean} for the EWMA running mean. Replaces linear bid/ask pairs with a compact log-space encoding suitable for EMA smoothing.
+
+% === R ===
+
+\item[Rate Limit] Token-bucket mechanism bounding operation frequency; configured per pool with capacity and regeneration rate.
+
+\item[Ray] Fixed-point representation with 27 decimal places ($10^{27}$).
+
+\item[Read Path] The code path executed when querying a user's balance via \texttt{totalOf}. In the log-space form, this is where \texttt{exp()} is called.
+
+\item[Reentrancy Guard] Protection preventing a contract from being called recursively during execution; uses transient storage.
+
+\item[Reindex] Interest compounding mechanism that updates the global log-space index and snapshots per-user indices. The functions \texttt{\_reindex} and \texttt{\_reindexWith} advance the global log-space index; lock bonus/malus is applied per-user via \texttt{\_spreadDiff} consumed by the IR model when computing the position rate. Per-user balance growth is $\exp(I_{\text{global}} - I_{\text{user}})$.
+
+\item[Reserves] Token balances held in AMM liquidity pools; used to calculate bid/ask quotes via constant product formula.
+
+\item[Ring-Lock] Base mechanism: ring buffer + bitmap + cached total. 9 words per user.
+
+\item[Role Guard] Contract restricting which addresses can execute role-gated functions; part of access control system.
+
+% === S ===
+
+\item[Sandwich Attack] MEV attack bracketing a victim transaction with front-run and back-run to extract value.
+
+\item[Secondary Market Discount] Price reduction $D$ (typically 3--10\%) for locked position tokens relative to NAV; reflects inability to redeem for underlying assets.
+
+\item[Self-Healing] \texttt{more()} correcting stale slot contributions during overwrite, maintaining \texttt{total} and \texttt{depth} consistency per-slot (Theorem~\ref{thm:self-healing}).
+
+\item[$\sigma$, $\sigma_h$\,$\dagger$] Annualized and hourly volatility of the collateral asset. $\sigma_h = \sigma / \sqrt{8760}$. ETH calibration: $\sigma = 90\%$, $\sigma_h \approx 0.96\%$/hour.
+
+\item[Slippage] Price deviation from executing a trade against AMM reserves; increases with trade size relative to reserves.
+
+\item[Solvency Boundary] Parameter constraint ensuring protocol can meet all obligations; default configuration satisfies $r_{\text{bonus}} + r_{\text{malus}} = 2s$, maintaining solvency for any lock adoption rate.
+
+\item[Spread] (1)~Oracle: bidirectional geomean of rel.\ spreads from both AMM query directions, stored as $\log_2(1 + s_{\text{geo}})$; wider spreads indicate lower liquidity or higher manipulation resistance. (2)~IRM: symmetric half-spread parameter (e.g., 10\%) applied to base rate; borrow rate = base~$\times$~$(1{+}s)$, supply rate = base~$\times$~$(1{-}s)$.
+
+\item[Spread Scaling] Logarithmic widening of bid/ask spreads for large positions via $\mu = \log_2(x + 1) + 1$ where $x = \text{center} \cdot s$ is the notional spread (equivalently $\log_2(2x + 2)$); reflects market impact without governance parameters.
+
+\item[Square] Restricted-access liquidation function executing debt assumption: for a given exponent $e$, atomically transfers $\lfloor\text{borrow}/2^e\rfloor$ and $\lfloor\text{supply}/2^e\rfloor$ from victim to liquidator via bit-shift. Reverts if the victim is healthy (\texttt{wnav\_supply >= wnav\_borrow}, equivalently $H \geq 1$, treating the boundary as solvent) or the liquidator's post-transfer health is insufficient. See also Debt Assumption, Partial Liquidation.
+
+\item[Staleness] Age of price data from an oracle; stale prices beyond threshold are rejected to prevent exploitation.
+
+\item[Supply Position] ERC20 token representing deposited collateral; uses standard transfer semantics.
+
+\item[Supply Rate] The interest rate earned by suppliers, computed as $r_{\text{base}} \times (1 - s)$ where $s$ is the spread. Always less than or equal to the base rate.
+
+\item[Sybil Attack] Creating multiple accounts to gain unfair advantage; XPower Banq defends against rapid capacity monopolization.
+
+\item[Sybil Resistance] Protection against Sybil attacks; in XPower Banq, bounds accumulation \emph{rate} via holder-count scaling, not equilibrium share.
+
+% === T ===
+
+\item[Time-lock] Mandatory delay between proposing and executing governance parameter changes; prevents sudden malicious updates.
+
+\item[Time-Lock (Lock Extension)] Extension of Ring-Lock adding the \texttt{depth} mapping for token-seconds. 10 words per user.
+
+\item[Time-Weighted Mean] Integration technique averaging parameter values over time; enables smooth transitions without discrete jumps.
+
+\item[Token Bucket] Rate limiting mechanism with capacity $C$, regeneration rate, and per-operation cost; operation allowed iff $C \geq 0$.
+
+\item[Token-Seconds] $\sum v_i \times \text{remaining time}$---integral of locked amount over remaining time. The depth metric that drives graduated commitment.
+
+\item[Truncation Bias] The systematic negative error introduced by fixed-point truncation (rounding toward zero). In the multiplicative form, this bias compounds over $N$ accrual steps ($\leq 2N$~ULP). The log-space form has zero truncation during accrual.
+
+\item[TVL\,$\dagger$] Total Value Locked---the aggregate collateral value in the lending pool. All bad-debt metrics are reported as a percentage of TVL.
+
+\item[tx.origin] Transaction originator address included in PoW hash; prevents front-runners from reusing others' solutions.
+
+\item[TWAP] Time-Weighted Average Price---price smoothed over time via log-space EMA (geometric mean temporal averaging) to resist manipulation. Simulated in \cite{sim}.
+
+% === U ===
+
+\item[UD60x18] PRBMath's unsigned 60.18-decimal fixed-point type. 60~integer digits and 18~fractional digits, fitting in \texttt{uint256}. Used for \texttt{exp()}, \texttt{mul()}, and \texttt{ln()} operations.
+
+\item[uint256] Solidity's 256-bit unsigned integer type, holding values from~0 to $2^{256} - 1 \approx 1.16 \times 10^{77}$. The storage type for both the multiplicative and log-space indices.
+
+\item[ULP] Unit in the Last Place---the smallest representable increment at a given precision. At WAD: 1~ULP $= 1$ wei $= 10^{-18}$.
+
+\item[User Snapshot ($L_u$)] The value of $L$ at the user's last state transition, stored in \texttt{\_userIndex[user]}.
+
+\item[Utilization] Ratio of borrowed assets to supplied assets in a vault; drives interest rates via a piecewise-linear model with a kink at optimal utilization.
+
+% === V ===
+
+\item[$\text{VaR}(99\%)$\,$\dagger$] Value-at-Risk at the 99th percentile---the bad debt level exceeded in only 1\% of simulated paths.
+
+\item[Vault] ERC4626-compliant custody contract holding deposited assets; tracks utilization for the interest rate model.
+
+% === W ===
+
+\item[$W$\,$\dagger$] Phantom-healthy window---the number of oracle refreshes during which a position remains phantom-healthy after a crash (Definition~\ref{def:phantom}).
+
+\item[WAD] Fixed-point representation with 18 decimal places ($10^{18}$).
+
+\item[Weight] Multiplier applied to asset values in health calculations; determines effective LTV. Default: $w_s = 170$, $w_b = 255$.
+
+\item[Write Path] The code path executed during index accrual (\texttt{\_reindex}). In the log-space form, this is a single addition; in the multiplicative form, it calls \texttt{exp()} and \texttt{mul()}.
+
+\end{description}
+
+\ifbundle\else
+\clearpage
+\ifodd\value{page}\else\thispagestyle{empty}\null\clearpage\fi
+\fi
+
+\end{document}

@@ -1,0 +1,98 @@
+% ==============================================================================
+% banq-front.tex — Unified front matter for the bundle.
+% Single title page, single arXiv tag, combined executive abstract, master TOC.
+% Loaded by 000.banq-all/banq.tex in bundle mode only.
+% ==============================================================================
+
+% Page 1: title block, arXiv tag, and huge centred bank emoji.
+\thispagestyle{empty}
+\maketitle
+
+% Single arXiv-style vertical tag (one date for the whole bundle).
+\input{shared/arxiv-tag}
+
+\vspace*{\fill}
+\begin{center}
+  \twemoji[height=8cm]{bank}
+\end{center}
+\vspace*{\fill}
+\clearpage
+
+% Page 2: combined executive abstract and keywords. Styled to match the
+% per-paper verso abstracts emitted by \banqPaper (large bold "Abstract"
+% heading, \small body, vertically centred via \vspace*{\fill} pads).
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}{\large\bfseries Abstract}\end{center}
+\medskip
+\begingroup
+\small
+\noindent
+DeFi lending markets channel billions of dollars but share a structural weakness: a sharp price move triggers liquidations, the dumped collateral pushes prices lower, and a cascade follows. XPower Banq is a permissionless lending protocol designed to dampen these cascades — along with several other systemic risks — without giving up the openness and composability that make DeFi work.
+
+\medskip
+\noindent
+This volume gathers the protocol's complete documentation in one bound document. It comprises six companion papers reproduced here without abridgement — five of them individually published as arXiv-style preprints — organised into five parts.
+
+\medskip
+\noindent
+\textbf{Part~I — Protocol.} The whitepaper introduces five design choices that set the protocol apart from incumbents such as Compound and Aave~\cite{compound2019,aave2020}. (1)~\emph{Optionally locked positions:} borrowers may lock their position for a fixed term in exchange for liquidation immunity; the locked share $\phi$ attenuates cascade severity by a factor of $(1{-}\phi)$. (2)~\emph{Lethargic governance:} every parameter change is bounded multiplicatively ($0.5\times$--$2\times$ per cycle) and phased in asymptotically, so users always have time to react. (3)~\emph{Beta-distributed position caps} slow how fast a single account can scale up, yielding Sybil resistance that grows as $\sqrt{n{+}2}$. (4)~\emph{Transferable debt positions} with inverted ERC20 semantics let liquidators \emph{assume} bad debt rather than repay it — a far more capital-efficient model. (5)~\emph{Log-space TWAP oracles} compute time-weighted geometric means in both directions, cheaply and without overflow.
+
+\medskip
+\noindent
+\textbf{Part~II — Engineering Primitives.} Two implementation papers describe the lower-level on-chain building blocks the protocol depends on. A 16-slot quarterly \emph{ring-buffer time lock}~\cite{lck} tracks total locked depth in $O(1)$ via the algebraic identity $D = \Sigma Q - Tt + pL$, avoiding the gas cost of iterating slots. A \emph{log-space compounding interest index}~\cite{log} stores the cumulative sum $L = \sum r_i$ in place of the multiplicative product, eliminating overflow and replacing write-path exponentiation with addition.
+
+\medskip
+\noindent
+\textbf{Part~III — Theory.} Formal foundations and proofs covering continuous compounding, log-space oracle aggregation, time-weighted parameter integration, and token-bucket rate limiting; proofs that the protocol resists liquidation cascades, Sybil amplification, abrupt governance, and MEV front-running; and a Nash-equilibrium analysis of lock adoption that identifies two self-reinforcing equilibria — low and high — with utilization-dependent dynamics.
+
+\medskip
+\noindent
+\textbf{Part~IV — Evaluation.} Four empirical studies validate the protocol. \emph{Capacity accumulation} under the beta cap confirms the predicted $O(\sqrt{n})$ Sybil-resistance scaling. \emph{Liquidation-cascade simulations} across five market-impact regimes show up to 80\% cascade reduction at full lock adoption. \emph{Log-space TWAP oracles} are stress-tested under price shocks and liquidity changes across 60 on-chain Foundry scenarios, exhibiting two-tick manipulation immunity. \emph{Bad-debt risk} is quantified by Merton jump-diffusion Monte Carlo and corroborated by a closed-form analytical bound: at the default 66.67\% LTV bad debt remains bounded under empirical crash distributions, and the 33\% conservative-mode floor keeps bad debt at zero for crashes up to 50\%.
+
+\medskip
+\noindent
+\textbf{Part~V — Reference.} A consolidated glossary of over~120 terms — protocol mechanisms, mathematical notation, and DeFi terminology — intended to be read alongside the body of the volume.
+
+\medskip
+\noindent
+The defaults strike a deliberate balance between capital efficiency and solvency: 66.67\% LTV with a 50\% over-collateralisation buffer, adjustable through lethargic governance (\S\ref{subsec:lethargic-governance}).
+
+\medskip
+\noindent\textbf{Keywords:} DeFi, lending protocol, liquidation, oracle, TWAP, governance, interest rates, time locks, log-space arithmetic, Sybil resistance, Nash equilibrium\par
+\endgroup
+\vspace*{\fill}
+\clearpage
+
+% Master table of contents — single hierarchical listing covering all parts and
+% the chapters within them. Children's \section calls feed into this TOC.
+% Force the TOC to start on the next odd (recto) page; see \banqForceRecto.
+\banqForceRecto
+{
+  \hypersetup{linkcolor=primaryblue}
+  % Compact 2-column master TOC. The "Contents" heading is emitted at full
+  % size above the columns; the listing itself is rendered inside multicols
+  % at \small with tightened vertical spacing and narrower number boxes so
+  % the bundle's deep numbering ("IV.\,4.6.1") still fits in narrow columns.
+  \section*{\contentsname}%
+  \begingroup
+    \small
+    \setlength{\columnsep}{1.5em}%
+    \setlength{\cftbeforesecskip}{2pt}%
+    \setlength{\cftbeforesubsecskip}{0.5pt}%
+    \setlength{\cftbeforesubsubsecskip}{0pt}%
+    \setlength{\cftbeforeparaskip}{0pt}%
+    \setlength{\cftsecnumwidth}{3.0em}%
+    \setlength{\cftsubsecnumwidth}{3.7em}%
+    \setlength{\cftsubsubsecnumwidth}{4.6em}%
+    \begin{multicols}{2}
+      \makeatletter\@starttoc{toc}\makeatother
+    \end{multicols}
+  \endgroup
+}
+\bigskip
+\hrule
+\bigskip
+% Force the TOC itself to occupy an even number of pages, so Part~I starts on
+% an odd (recto) page in duplex bindings; see \banqForceRecto.
+\banqForceRecto
