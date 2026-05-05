@@ -39,7 +39,9 @@ export default defineConfig({
     nav: [
       { text: 'Whitepaper', link: '/whitepaper/01-introduction' },
       { text: 'Time Locks', link: '/timelocks/01-introduction' },
-      { text: 'Appendices', link: '/appendices/part-i-math/mathematical-foundations' },
+      { text: 'Log-Space Index', link: '/logspace/01-introduction' },
+      { text: 'Theory', link: '/theory/01-mathematical-foundations' },
+      { text: 'Simulations', link: '/simulations/01-cap-accumulation' },
       { text: 'Reference', link: '/reference/parameters' },
       { text: 'App', link: 'https://www.xpowerbanq.com', target: '_blank' }
     ],
@@ -47,7 +49,7 @@ export default defineConfig({
     sidebar: {
       '/whitepaper/': [
         {
-          text: 'Whitepaper',
+          text: 'Protocol Whitepaper',
           items: [
             { text: '1. Introduction', link: '/whitepaper/01-introduction' },
             { text: '2. Related Work', link: '/whitepaper/02-related-work' },
@@ -78,28 +80,42 @@ export default defineConfig({
           ]
         }
       ],
-      '/appendices/': [
+      '/logspace/': [
         {
-          text: 'Part I: Math & Proofs',
+          text: 'Log-Space Compounding Index',
           items: [
-            { text: 'A. Mathematical Foundations', link: '/appendices/part-i-math/mathematical-foundations' },
-            { text: 'B. Security Proofs', link: '/appendices/part-i-math/security-proofs' },
-            { text: 'C. Lock Incentive Analysis', link: '/appendices/part-i-math/lock-incentive-analysis' }
+            { text: '1. Introduction', link: '/logspace/01-introduction' },
+            { text: '2. Related Work', link: '/logspace/02-related-work' },
+            { text: '3. Overflow Analysis', link: '/logspace/03-overflow-analysis' },
+            { text: '4. Log-Space Index', link: '/logspace/04-log-space-index' },
+            { text: '5. Code Transformation', link: '/logspace/05-code-transformation' },
+            { text: '6. Gas Analysis', link: '/logspace/06-gas-analysis' },
+            { text: '7. Precision Analysis', link: '/logspace/07-precision-analysis' },
+            { text: '8. Adversarial Analysis', link: '/logspace/08-adversarial-analysis' },
+            { text: '9. Limitations & Future Work', link: '/logspace/09-limitations' },
+            { text: '10. Conclusion', link: '/logspace/10-conclusion' }
           ]
-        },
+        }
+      ],
+      '/theory/': [
         {
-          text: 'Part II: Simulations & Risk',
+          text: 'Mathematical Theory & Proofs',
           items: [
-            { text: 'D. Cap Simulations', link: '/appendices/part-ii-simulations/cap-simulations' },
-            { text: 'E. Cascade Simulations', link: '/appendices/part-ii-simulations/cascade-simulations' },
-            { text: 'F. TWAP Simulations', link: '/appendices/part-ii-simulations/twap-simulations' },
-            { text: 'G. Bad-Debt Risk Analysis', link: '/appendices/part-ii-simulations/bad-debt-risk' }
+            { text: '1. Mathematical Foundations', link: '/theory/01-mathematical-foundations' },
+            { text: '2. Formal Proofs', link: '/theory/02-formal-proofs' },
+            { text: '3. Nash Equilibrium Analysis', link: '/theory/03-nash-equilibrium' }
           ]
-        },
+        }
+      ],
+      '/simulations/': [
         {
-          text: 'Part III: Reference',
+          text: 'Simulations & Risk Analysis',
           items: [
-            { text: 'Glossary', link: '/appendices/part-iii-reference/glossary' }
+            { text: '1. Capacity Accumulation', link: '/simulations/01-cap-accumulation' },
+            { text: '2. Cascade Simulation', link: '/simulations/02-cascade' },
+            { text: '3. TWAP Oracle', link: '/simulations/03-twap-oracle' },
+            { text: '4. Bad-Debt Risk', link: '/simulations/04-bad-debt-risk' },
+            { text: '5. Conclusion', link: '/simulations/05-conclusion' }
           ]
         }
       ],
@@ -109,6 +125,8 @@ export default defineConfig({
           items: [
             { text: 'Parameters', link: '/reference/parameters' },
             { text: 'Constants', link: '/reference/constants' },
+            { text: 'EMA Decay Factors', link: '/reference/ema-decay' },
+            { text: 'Bibliography', link: '/reference/bibliography' },
             { text: 'Glossary', link: '/reference/glossary' }
           ]
         }
