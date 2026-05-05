@@ -8,8 +8,6 @@ next:
   link: /timelocks/04-ring-lock
 ---
 
-# 3. Preliminaries
-
 ## Definitions
 
 ::: definition
@@ -25,43 +23,40 @@ next:
 :::
 
 ::: definition
-**Definition 3.4** (Token-Seconds). The *token-second depth* for user $u$ at timestamp $t$ is:
+**Definition 3.4** (Token-Seconds). The *token-second depth* for user $u$ at timestamp $t$ is
 
 $$D(u,t) = \sum_{i \in A} v_i \bigl((e_i{+}1)Q - t\bigr) + p \cdot L$$
 
-where $A$ is the set of active (non-expired) timed slots, $v_i$ and $e_i$ are the value and epoch of slot $i$, $p = \texttt{perma}[u]$ is the permanently locked amount, and $L = \texttt{LOCK\_TIME} = 15Q \approx 45$ months.
+where $A$ is the set of active (non-expired) timed slots, $v_i$ and $e_i$ are the value and epoch of slot $i$, $p = \texttt{perma}[u]$ is the permanently locked amount, and $L = \texttt{LOCK\_TIME} = 16Q \approx 48$ months.
 :::
 
 ## Storage Layout
 
-The complete storage is 19 words per user:
+The complete storage is 10 words per user (most zero-initialized):
 
 ```solidity
-struct LockSlot {
-    uint32 epoch;  // absolute epoch index
-    uint224 value; // locked amount
-}  // 1 word (256 bits packed)
-
+// 128-bit packed words: [uint16 epoch | uint112 value].
+// uint128[16] = 8 storage words, two slots per word.
 struct Lock {
-    // 16-slot quarterly ring buffer
-    mapping(address => LockSlot[16]) slots;
-    // permanent (irrevocable) locked amount
-    mapping(address => uint256) perma;
-    // [uint240 total | uint16 bits]
-    mapping(address => uint256) coded;
+    // 16-slot quarterly ring buffer (8 words, 2 per word)
+    mapping(address => uint128[16]) slots;
+    // [uint120 perma | uint120 total | uint16 bits]
+    mapping(address => uint256)     cache;
     // epoch-weighted sum: sigma v_i*(e_i+1)
-    mapping(address => uint256) depth;
+    mapping(address => uint256)     depth;
 }
 ```
 
-The first 18 words (16 slots + `perma` + `coded`) constitute the Ring-Lock layer. The `depth` mapping is the Time-Lock extension.
+The first 9 words (8 ring slots + `cache`) constitute the Ring-Lock layer. The `depth` mapping is the Time-Lock extension. The `cache` word merges the irrevocable `perma` amount, the cached ring `total`, and the active-slot `bits` bitmap into a single `SLOAD`/`SSTORE` — a key gas optimization, since most operations touch all three fields together. Per-call `amount` is bounded by `uint112`; `perma` saturates at $2^{120}{-}1$ (cumulative permanent deposits would need ~256 max-sized adds before saturation).
 
 ## Bitmap Encoding
 
-The `coded` word packs two values: the upper 240 bits store the cached total locked amount, and the lower 16 bits store the active-slot bitmap. Decoding:
+The `cache` word packs three values: the upper 120 bits store the irrevocable `perma` amount, the middle 120 bits store the cached ring `total`, and the lower 16 bits store the active-slot bitmap. Decoding:
 
-$$\texttt{total} = \texttt{coded} \gg 16$$
+$$\texttt{perma} = \texttt{cache} \gg 136$$
 
-$$\texttt{bits} = \texttt{coded} \mathbin{\&} \texttt{0xFFFF}$$
+$$\texttt{total} = (\texttt{cache} \gg 16) \mathbin{\&} (2^{120}{-}1)$$
 
-LSB extraction uses a de Bruijn sequence: the lowest set bit is isolated via $\texttt{lsb} = b \mathbin{\&} (\lnot b + 1)$, then multiplied by the constant `0x09AF` modulo $2^{16}$, producing a unique 4-bit hash in the top nibble that indexes into a 64-bit lookup table. This replaces 16 conditional `SLOAD`s with 1 `SLOAD` plus bit arithmetic.
+$$\texttt{bits}  = \texttt{cache} \mathbin{\&} \texttt{0xFFFF}$$
+
+LSB extraction uses a de Bruijn sequence [\[debruijn\]](/reference/bibliography#debruijn): the lowest set bit is isolated via $\texttt{lsb} = b \mathbin{\&} (\lnot b + 1)$, then multiplied by the constant `0x09AF` modulo $2^{16}$, producing a unique 4-bit hash in the top nibble that indexes into a 64-bit lookup table. This replaces 16 conditional `SLOAD`s with 1 `SLOAD` plus bit arithmetic.

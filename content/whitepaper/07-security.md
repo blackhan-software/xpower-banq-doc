@@ -1,10 +1,12 @@
 ---
-title: Security Analysis
-prev: '/whitepaper/06-governance'
-next: '/whitepaper/08-evaluation'
+title: "7. Security Analysis"
+prev:
+  text: "6. Governance & Parameters"
+  link: /whitepaper/06-governance
+next:
+  text: "8. Evaluation"
+  link: /whitepaper/08-evaluation
 ---
-
-# Security Analysis
 
 ## Adversary Model
 
@@ -12,18 +14,18 @@ We consider an adversary $\mathcal{A}$ who controls capital $K$, hash rate $H$, 
 
 ## Core Security Properties
 
-**Cascade Attenuation ([Theorem 1](/whitepaper/04-mechanisms#locked-positions-and-cascade-attenuation)).** Because locked supply positions cannot be redeemed, cascade sell pressure is bounded to $(1{-}\phi)$ of the unlocked pool. This attenuates—but does not prevent—cascades. Simulation confirms that at a 25% price shock, unlocked positions suffer 85.7% liquidation versus 29.4% when fully locked ([Section 8](/whitepaper/08-evaluation)).
+**Cascade Attenuation** ([Theorem 1](/whitepaper/04-mechanisms#locked-positions-and-cascade-attenuation))**.** Because locked supply positions cannot be redeemed, cascade sell pressure is bounded to $(1{-}\phi)$ of the unlocked pool. This attenuates — but does not prevent — cascades. Simulation confirms that at a 25% price shock, unlocked positions suffer 85.7% liquidation versus 29.4% when fully locked ([Section 8](/whitepaper/08-evaluation)).
 
-**Rate-Limited Accumulation.** The $\sqrt{n{+}2}$ divisor bounds per-iteration capacity gain sublinearly. Combined with 7 iterations/week, reaching 99% capacity requires approximately $850\sqrt{n/100}$ iterations. This constitutes rate-limiting rather than Sybil prevention: the long-term share distribution is ultimately determined by initial capital.
+**Rate-Limited Accumulation.** The $\sqrt{n{+}2}$ divisor bounds per-iteration capacity gain sublinearly. Combined with 7 iterations/week, reaching 99% capacity requires approximately $850\sqrt{n/100}$ iterations. This constitutes rate-limiting rather than Sybil prevention: the long-term share distribution is ultimately determined by initial capital ([Cap Accumulation Simulations](/simulations/01-cap-accumulation)).
 
-**Governance Rate Bound ([Theorem 2](/whitepaper/06-governance)).** Catastrophic parameter changes require 6+ months of sustained malicious governance, providing ample time for detection and response.
+**Governance Rate Bound** ([Theorem 2](/whitepaper/06-governance))**.** Catastrophic parameter changes require 6+ months of sustained malicious governance, providing ample time for detection and response.
 
 **Solvency.** The code enforces $r_{\text{bonus}} \leq s$ and $r_{\text{malus}} \leq s$ independently per parameter. At full lock adoption, the combined constraint $r_{\text{bonus}} + r_{\text{malus}} \leq 2s$ holds at the boundary, with margin approaching zero. The aggregate solvency formula ($r_{\text{bonus}} \cdot \bar{\rho}^S + r_{\text{malus}} \cdot \bar{\rho}^B \leq 2s$) is a sufficient condition that is not directly enforced on-chain; the per-parameter bounds serve as the operative constraints.
 
 ## Risk Assessment
 
 | Risk Category | Likelihood | Impact |
-|---|---|---|
+|---|:---:|:---:|
 | Oracle Manipulation | Medium | High |
 | Governance Attack | Low | High |
 | Liquidation Cascade† | Medium | High |
@@ -34,7 +36,7 @@ We consider an adversary $\mathcal{A}$ who controls capital $K$, hash rate $H$, 
 | PoW Resource Advantage | Medium | Low |
 | Oracle Staleness | Medium | Medium |
 
-† Impact conditional on lock adoption; without locks, impact is High.
+<small>† Impact conditional on lock adoption; without locks, impact is High.</small>
 
 **Oracle.** The log-space TWAP with $\alpha = 0.944$ requires approximately 40 hours of sustained manipulation to achieve 90% deviation, and flash loans are ineffective due to the two-tick immunity window. However, the 2+ hour blindness during genuine crashes creates bad-debt risk ([Section 4.6](/whitepaper/04-mechanisms#oracle-twap)).
 
@@ -42,4 +44,4 @@ We consider an adversary $\mathcal{A}$ who controls capital $K$, hash rate $H$, 
 
 **Smart Contracts.** The implementation uses reentrancy protection via `ReentrancyGuardTransient`, Solidity 0.8+ overflow checks, and OpenZeppelin access control. No formal verification has been performed ([Section 9](/whitepaper/09-limitations)).
 
-Full proofs of the above properties are provided in [Appendix B](/appendices/part-i-math/security-proofs).
+Full proofs of the above properties are provided in [Theory: Formal Proofs](/theory/02-formal-proofs).

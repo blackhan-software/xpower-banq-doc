@@ -3,9 +3,7 @@ title: Protocol Parameters
 description: All governable parameters for XPower Banq, organized by contract domain.
 ---
 
-# Protocol Parameters
-
-All protocol parameters are governed via the lethargic transition mechanism. They are organized into four contract domains: Pool, Position, Oracle, and Vault. Each parameter transitions asymptotically toward its target, bounded to 0.5x–2x per governance cycle.
+All protocol parameters are governed via the [lethargic transition mechanism](/whitepaper/04-mechanisms#lethargic-governance). They are organized into four contract domains: Pool, Position, Oracle, and Vault. Each parameter transitions asymptotically toward its target, bounded to $0.5\times$–$2\times$ per governance cycle.
 
 ## Pool Parameters
 
@@ -20,10 +18,12 @@ Time units: s = second, d = day, w = week, m = month, y = year.
 | `MIN_BORROW` | 1d | [1s, 1y] | Min borrow rate-limit |
 | `POW_BORROW` | 0 | [0, 64] | Borrow PoW difficulty |
 | `POW_SQUARE` | 0 | [0, 64] | Liquidation PoW difficulty |
-| `WEIGHT_SUPPLY` | 85 | [0, 255] | Supply health weight |
+| `WEIGHT_SUPPLY` | 170 | [0, 255] | Supply health weight† |
 | `WEIGHT_BORROW` | 255 | [0, 255] | Borrow health weight |
 
-With the default weights, the effective LTV is 85/255 = 33%.
+<small>† Deployer-set; reference deployments use 170/255 ≈ 66.67% LTV.</small>
+
+With the default weights, the effective LTV is $170/255 \approx 66.67\%$ and the implicit liquidation bonus is $\beta = w_b/w_s - 1 = 50\%$.
 
 ## Position Parameters
 
@@ -31,11 +31,13 @@ With the default weights, the effective LTV is 85/255 = 33%.
 |---|---|---|---|
 | `UTIL` | 90% | [0, 100%] | Optimal utilization |
 | `RATE` | 10% | [0, 100%] | Rate at kink |
-| `SPREAD` | 10% | [0, 50%] | Rate half-spread |
+| `SPREAD` | 10% | [0, 50%] | Rate half-spread‡ |
 | `LOCK_BONUS` | 10% | [0, `SPREAD`] | Locked supply APY bonus |
 | `LOCK_MALUS` | 10% | [0, `SPREAD`] | Locked borrow APY reduction |
-| `CAP` | — | [0, 2^224] | Position cap |
-| `MIN_HOLDERS` | — | [0, 10^18] | Min large holders |
+| `CAP` | — | [0, $2^{112}{-}1$] | Position cap (≈ $5.19 \times 10^{15}$ at 18 decimals) |
+| `MIN_HOLDERS` | — | [0, $10^{18}$] | Min large holders |
+
+<small>‡ Lower-bounded by `LOCK_BONUS` and `LOCK_MALUS`.</small>
 
 ## Oracle Parameters
 
@@ -70,17 +72,17 @@ Mandatory initial lock periods prevent manipulation at deployment. No parameter 
 
 ### Maximum Parameter Change Over Time
 
-Each single change is bounded to at most 2x. Overlapping transitions are disallowed, and changes are rate-limited to once per governance period (monthly).
+Each single change is bounded to at most $2\times$. Overlapping transitions are disallowed, and changes are rate-limited to once per governance period (monthly).
 
 | Cycles | Max Increase | Max Decrease |
-|---|---|---|
-| 1 | 2x | 0.5x |
-| 2 | 4x | 0.25x |
-| 3 | 8x | 0.125x |
-| 6 | 64x | 0.016x |
-| 12 | 4096x | 0.00024x |
+|---:|---:|---:|
+| 1 | $2\times$ | $0.5\times$ |
+| 2 | $4\times$ | $0.25\times$ |
+| 3 | $8\times$ | $0.125\times$ |
+| 6 | $64\times$ | $0.016\times$ |
+| 12 | $4096\times$ | $0.00024\times$ |
 
-A 10x change requires at least 4 months (ceil(log2(10)) = 4 cycles).
+A $10\times$ change requires at least 4 months ($\lceil \log_2 10 \rceil = 4$ cycles).
 
 ## Role-Based Access Control
 
@@ -96,8 +98,8 @@ Guard roles serve as a "break glass" mechanism, allowing emergency halts of mali
 
 ### Governance Attack Precautions
 
-- Delayed feed changes require up to 3 months
-- Guard role separation prevents escalation
-- Gradual parameter migration eliminates arbitrage from sudden changes
-- Bounded cumulative change creates predictable worst-case scenarios
-- **Immutable constraints:** minimum decimals >= 6, minimum 2 tokens, fixed token list, non-upgradeable contracts
+- Delayed feed changes require up to 3 months.
+- Guard role separation prevents escalation.
+- Gradual parameter migration eliminates arbitrage from sudden changes.
+- Bounded cumulative change creates predictable worst-case scenarios.
+- **Immutable constraints.** Minimum decimals ≥ 6, minimum 2 tokens, fixed token list, non-upgradeable contracts.

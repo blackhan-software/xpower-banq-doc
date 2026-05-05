@@ -1,16 +1,16 @@
 ---
-title: Evaluation
-prev: '/whitepaper/07-security'
-next: '/whitepaper/09-limitations'
+title: "8. Evaluation"
+prev:
+  text: "7. Security Analysis"
+  link: /whitepaper/07-security
+next:
+  text: "9. Limitations & Future Work"
+  link: /whitepaper/09-limitations
 ---
-
-# Evaluation
 
 ## Agent-Based Cascade Simulation
 
 We simulate 1,000 borrowers with log-normal positions, health factors $H \sim \mathcal{N}(1.5, 0.3)$ truncated at $[1.0, 3.0]$, and linear price impact $\Delta p = k \cdot V_{\text{sold}}$ with $k = 1.5 \times 10^{-4}$ (pool ${\sim}25\%$ of market depth).
-
-**Cascade simulation — positions liquidated (%), $k = 1.5 \times 10^{-4}\text{:}$**
 
 | Lock $\phi$ | 10% | 15% | 20% | 25% | 30% |
 |---:|---:|---:|---:|---:|---:|
@@ -20,23 +20,42 @@ We simulate 1,000 borrowers with log-normal positions, health factors $H \sim \m
 | 75% | 7.8 | 13.5 | 22.4 | 33.3 | 47.9 |
 | 100% | 7.4 | 12.7 | 19.8 | 29.4 | 38.6 |
 
+<small>Cascade simulation — positions liquidated (%), $k = 1.5 \times 10^{-4}$.</small>
+
 <figure>
   <img src="/images/007-cascade.svg" alt="Cascade depth vs. price drop for varying lock fractions">
-  <figcaption>Figure 7: Cascade depth vs. price drop for varying lock fractions</figcaption>
+  <figcaption>Figure 8: Cascade depth versus price drop for varying lock fractions.</figcaption>
 </figure>
 
-**Simulation Limitations.** The simulation uses 1,000 agents, which is too few for high statistical confidence. Health factor distributions are assumed rather than calibrated against real DeFi data. The linear price impact model (Kyle, 1985) is a first-order approximation; real order books exhibit concave impact. No confidence intervals or sensitivity analysis on $k$ are provided, and historical stress events are discussed narratively but not backtested. Implementation details appear in [Appendix E](/appendices/part-ii-simulations/cascade-simulations).
+**Simulation Limitations.** The simulation uses 1,000 agents, which is too few for high statistical confidence. Health factor distributions are assumed rather than calibrated against real DeFi data. The linear price impact model [\[kyle1985continuous\]](/reference/bibliography#kyle1985continuous) is a first-order approximation; real order books exhibit concave impact. No confidence intervals or sensitivity analysis on $k$ are provided, and historical stress events are discussed narratively but not backtested. Implementation details appear in [Cascade Simulations](/simulations/02-cascade).
 
 ## Gas Cost Analysis
 
-**Cross-protocol gas comparison, warm interactions (kgas):**
+Gas measurements are post-optimization Foundry snapshots (`FOUNDRY_OPTIMIZER=true`, default profile, `via_ir=false`), benchmarked against Aave V3.3 figures from a 2025 Cyfrin gas-optimization audit. Banq's warm-path gas is competitive with mainstream lending protocols on supply and dominates them on every other operation:
 
-| Operation | Morpho Blue | Comp. V2 | Aave V3 | Aave V4 | XPower Banq |
-|---|---:|---:|---:|---:|---:|
-| Supply | 90k | 93k | 160k | 107k | 235k |
-| Borrow | 130k | 200k | 320k | 205k | 336k |
-| Settle | 91k | 112k | 180k | 120k | 161k |
-| Redeem | 138k | 150k | 175k | 129k | 306k |
-| Liquidate | — | 285k | 450k | 345k | 648k |
+| Operation | Banq | Aave V3 | Δ |
+|---|---:|---:|---:|
+| Supply | 167,209 | 146,354 | +14% |
+| Borrow | 140,884 | 247,485 | −43% |
+| Repay (settle) | 123,403 | 189,518 | −35% |
+| Withdraw (redeem) | 128,380 | 181,430 | −29% |
+| Liquidation (full) | 298,882 | 389,059 | −23% |
 
-XPower Banq's gas costs are 1.8–2.6$\times$ those of Morpho Blue and 1.3–2.4$\times$ those of Aave V4. This comparison should be interpreted carefully: Morpho Blue achieves low costs through a minimalist singleton (approximately 550 lines) that delegates oracle validation, position caps, and risk management to external curators—an architectural trade-off with documented consequences (e.g., a 2024 oracle misconfiguration exploit). Euler V2 and Liquity V2, which are closer architectural comparators, were not available for inclusion. On Avalanche (approximately 1.55 gwei, AVAX <\$10), all operations cost under 1 cent USD.
+<small>Banq vs. Aave V3 warm-path gas (Foundry, optimizer ON).</small>
+
+| Operation | Cold | Warm | Notes |
+|---|---:|---:|---|
+| Supply | 285,814 | 167,209 | — |
+| Borrow | 244,833 | 140,884 | self-pair |
+| Borrow (cross-pair) | — | 194,317 | +53k oracle leg |
+| Liquidation (full) | 298,882 | — | — |
+| `healthOf` (view) | 44,611 | — | view-only |
+| `lockSupply` (timed) | 179,860 | 66,688 | ring-slot lock |
+| `lockSupply` (perma) | 86,712 | — | irrevocable |
+| `lockBorrow` (timed) | 180,904 | 67,720 | debt lock |
+| `xfer_supply` (1 slot) | 191,463 | — | lock-aware ERC20 |
+| `xfer_supply` (16 slots) | 402,525 | — | worst-case ring scan |
+
+<small>Cold-vs-warm and Banq-unique operations.</small>
+
+The savings come from two implementation choices: (i) the [log-space compounding index](/logspace/01-introduction) eliminates `exp()` from the write path, saving $\sim$1,200 gas per accrual at the cost of $\sim$1,100 gas per `totalOf` read; (ii) the packed `_state` (global) and `_stateOf` (per-user) storage words pack `[uint80 index | uint64 stamp/depth | uint112 balance]` into a single `SSTORE`, halving the write cost relative to the canonical three-slot layout. The `Lock` library applies the same technique: `uint128[16]` ring slots pack two epoch-value pairs per word (8 words instead of 16 per user), and a single `cache` word packs `[uint120 perma | uint120 total | uint16 bits]`. On Avalanche (approximately 1.55 gwei, AVAX < \$10), all operations cost well under 1 cent USD.
