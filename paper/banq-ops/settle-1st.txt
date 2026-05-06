@@ -1,0 +1,135 @@
+================================================================================
+SETTLE TRANSACTION ANALYSIS (Cold)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_settle_cold()
+Gas Used:         170,263  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 195,000
+User:             cold2 (0xc012) — has supply + borrow, never settled
+Amount:           ~half of borrow balance
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+
+Prior state of cold2:
+  - supply(AVAX, 1000 AVAX)           done in setUp
+  - borrow(AVAX, maxBorrow/4)         done in setUp
+  - No settle or redeem
+
+Modifiers:        nonReentrant only (no ratelimited, no powlimited)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.settle(AVAX, half_of_debt)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- _settle(cold2, AVAX, half_of_debt)
+  |     +-- AVAX.transferFrom(cold2 -> pool)              [Transfer #1]
+  |     |
+  |     +-- Vault.deposit(amount)
+  |     |     +-- AVAX.transferFrom(pool -> vault)        [Transfer #2]
+  |     |     +-- Mint vAVAX shares to pool               [Transfer #3 - vAVAX]
+  |     |     +-- emit Reindex                            [Reindex #1]
+  |     |
+  |     +-- Convert shares to assets
+  |     |
+  |     +-- BorrowPosition.burn(cold2, assets)
+  |           +-- _accrueInterest(cold2)
+  |           |     +-- totalOf(cold2) > 0 (has outstanding debt)
+  |           |     +-- Calculate and accrue interest
+  |           |
+  |           +-- _burn(cold2, assets)
+  |                 +-- _decreaseHolders(existing, assets)
+  |                 |     +-- Check if user drops below threshold
+  |                 |
+  |                 +-- _reindexLess(cold2, assets)
+  |                 |     +-- _principalOf[cold2] -= amt  [WARM SSTORE: X->Y]
+  |                 |     +-- _userIndex[cold2] = index   [WARM SSTORE: X->Y]
+  |                 |
+  |                 +-- super._update(cold2, 0, assets)
+  |                 |     +-- _totalSupply -= value       [WARM SSTORE]
+  |                 |     +-- _balances[cold2] -= value   [WARM SSTORE: X->Y]
+  |                 |     +-- emit Transfer               [Transfer #4 - bAVAX burn]
+  |                 |
+  |                 +-- _reindex()
+  |                       +-- Vault.util() call
+  |                       +-- _index_ray, _stamp updates  [WARM SSTORE]
+  |                       +-- emit Reindex                [Reindex #2]
+  |
+  +-- No health check (settle reduces debt, improves position)
+  |
+  +-- emit Settle                                         [Settle event]
+
+================================================================================
+WHY ALL STORAGE IS WARM
+================================================================================
+
+Despite being the user's first settle, all borrow-position storage for cold2
+is already warm from the prior borrow() call in setUp:
+
+  - _balances[cold2]    was written during borrow → WARM
+  - _principalOf[cold2]  was written during borrow → WARM
+  - _userIndex[cold2]    was written during borrow → WARM
+  - _largeHolders       was written during borrow → WARM
+
+Settle only burns borrow position tokens — it does NOT create new user-specific
+storage slots. All slots being modified were already initialized by borrow.
+
+This is why settle cold and settle warm have IDENTICAL gas costs.
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy only)                 | ~3,000   | 1.8%
+AVAX transfers (user->pool, pool->vault)    | ~52,000  | 30.5%
+Vault.deposit() + vAVAX mint               | ~45,000  | 26.4%
+BorrowPosition.burn()                       | ~45,000  | 26.4%
+  - Warm SSTOREs                           | ~11,600  |
+  - Interest accrual                       | ~15,000  |
+  - Computation + events                   | ~18,400  |
+Pool Settle event + misc                   | ~25,263  | 14.8%
+--------------------------------------------|----------|------
+TOTAL                                       | 170,263  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. Settle is the cheapest pool operation (~170k gas)
+2. No health check required (settling reduces debt, improves health)
+3. No rate limiting or PoW limiting (only nonReentrant)
+4. All user-specific storage is already warm from the prior borrow
+5. Gas cost is IDENTICAL to warm settle (~170,266, within 3 gas)
+6. Token transfers + vault deposit account for ~57% of total gas
+7. BorrowPosition.burn() is the main computation at ~26%
+
+================================================================================
+COMPARISON TO OTHER OPERATIONS
+================================================================================
+
+Operation    | Cold Gas  | Has Health Check | Has Rate/PoW Limits
+-------------|-----------|------------------|--------------------
+Supply       | 324,660   | No               | Yes
+Borrow       | 434,871   | Yes              | Yes
+Settle       | 170,263   | No               | No
+Redeem       | 314,549   | Yes              | No
+
+Settle is cheapest because it:
+  - Has no health check (reduces risk)
+  - Has no rate limiting or PoW check (encouraged behavior)
+  - Only burns tokens (no new user-specific storage)
+
+================================================================================

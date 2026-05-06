@@ -1,0 +1,102 @@
+% ==============================================================================
+% banq-preamble.tex
+% Shared LaTeX preamble for all XPower Banq papers and the unified bundle.
+% Loaded via \input{../shared/banq-preamble} from each child paper and from
+% the master bundle root. Identical to the original per-paper preambles.
+% ==============================================================================
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{newunicodechar}
+\usepackage{libertinus}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{placeins}  % For \FloatBarrier
+\usepackage{tocloft}   % Adjustable TOC number-box widths
+\usepackage{multicol}  % Multi-column layout (used for the bundle's master TOC)
+\usepackage{twemojis}  % Twemoji glyphs (pdflatex-compatible color emoji)
+
+% Float parameters to prevent overlapping
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.7}
+
+% Prevent line breaks inside inline math (fixes broken superscripts/sqrt)
+\relpenalty=10000
+\binoppenalty=10000
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes,arrows,positioning,calc,patterns}
+
+% ==============================================================================
+% Colors and Styling
+% ==============================================================================
+\definecolor{codeblue}{RGB}{0,102,204}
+\definecolor{codepurple}{RGB}{128,0,128}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codegray}{RGB}{128,128,128}
+\definecolor{primaryblue}{RGB}{41,98,255}
+\definecolor{warningred}{RGB}{220,53,69}
+\definecolor{successgreen}{RGB}{40,167,69}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=primaryblue,
+    urlcolor=primaryblue
+}
+
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{codeblue}\bfseries,
+    commentstyle=\color{codegreen},
+    stringstyle=\color{codepurple},
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    numbersep=4pt,
+    xleftmargin=2em,
+    framexleftmargin=2em,
+    breaklines=true,
+    frame=single,
+    captionpos=b
+}
+\lstdefinelanguage{Solidity}{
+    keywords={function, returns, return, if, else, for, while, do, break, continue, throw, require, revert, assert, public, private, internal, external, view, pure, payable, memory, storage, calldata, constant, immutable, virtual, override, modifier, event, emit, struct, enum, mapping, contract, interface, library, abstract, is, new, delete, true, false, uint256, uint128, uint64, uint32, uint16, uint8, uint240, uint224, int256, int128, int64, int32, int8, address, bool, bytes, bytes32, string, unchecked},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[b]'
+}
+
+% ==============================================================================
+% Theorem Environments
+% ==============================================================================
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{property}{Property}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]

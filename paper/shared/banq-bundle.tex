@@ -1,0 +1,300 @@
+% ==============================================================================
+% banq-bundle.tex
+% Defines the \ifbundle conditional that distinguishes a standalone child build
+% from the unified bundle build, and the \xref macro that produces a real
+% internal hyperlink in bundle mode and a citation-with-text in standalone mode.
+%
+% Standalone child papers leave \bundlefalse (the default).
+% The master bundle root sets \bundletrue before \begin{document}.
+% ==============================================================================
+
+\newif\ifbundle
+\bundlefalse
+
+% \xref{<bibkey>}{<label>}{<text>}
+% - In bundle mode: produces a clickable in-document hyperlink to the label.
+% - In standalone mode: prints the text followed by a citation to the bibkey.
+% Note: defined after \bundletrue/\bundlefalse so it picks up the right branch.
+% Children must call this from inside \AtBeginDocument to ensure \ifbundle is
+% finalized; alternatively the macro can test \ifbundle at call site.
+\newcommand{\xref}[3]{%
+  \ifbundle
+    \hyperref[#2]{#3}%
+  \else
+    #3~\cite{#1}%
+  \fi
+}
+
+% \xrefshort{<bibkey>}{<label>}{<text>}
+% Same as \xref but suppresses the citation entirely in standalone mode (used
+% when the surrounding prose already cites the source).
+\newcommand{\xrefshort}[3]{%
+  \ifbundle
+    \hyperref[#2]{#3}%
+  \else
+    #3%
+  \fi
+}
+
+% \banqEnableBundleNumbering
+% Resets the section counter at every \part and prefixes \thesection with the
+% part's Roman numeral, so headings read "I.1 Introduction", "II.1 Introduction",
+% etc. Called explicitly from the master root after \bundletrue (see
+% 000.banq-all/banq.tex). Not called by standalone children.
+%
+% Parts that contain MULTIPLE sub-papers must additionally call \banqSubpart
+% (defined below) before each child \subfile, which appends a per-paper letter
+% suffix (a, b, ...) to the part numeral and resets the section counter so each
+% sub-paper restarts from 1. Without this, sub-papers within the same part
+% share a single section sequence, which causes the TOC to conflate identically
+% titled sections (e.g. two "II.1 Introduction" entries for banq-lck/banq-log).
+%
+% The outer \makeatletter/\makeatother brackets here are critical: the macro
+% body contains \@addtoreset (an @ control sequence) which must be parseable
+% as a single token at \newcommand-definition time, not at call time.
+\newcommand{\banqSubpartLetter}{}
+% Boolean tracking whether we are currently inside a sub-paper of a shared part
+% (i.e. \banqSubpart has been called since the last \part). Used by \banqPaper
+% to decide whether to demote section bookmark levels. \ifx-comparing
+% \banqSubpartLetter against \@empty doesn't work because \newcommand produces
+% \long macros while \@empty is short — \ifx always returns false.
+\newif\ifbanqSharedPart
+\makeatletter
+\newcommand{\banqEnableBundleNumbering}{%
+  \@addtoreset{section}{part}%
+  \renewcommand{\thesection}{\Roman{part}\banqSubpartLetter.\,\arabic{section}}%
+  % Make hyperref anchor names unique across sub-papers that share a \part.
+  % Without this, banq-lck and banq-log both emit section.2.1, section.2.2, …
+  % which corrupts the PDF outline tree (external viewers truncate at Part II).
+  \renewcommand{\theHsection}{\Roman{part}\banqSubpartLetter.\arabic{section}}%
+  \renewcommand{\theHsubsection}{\theHsection.\arabic{subsection}}%
+  \renewcommand{\theHsubsubsection}{\theHsubsection.\arabic{subsubsection}}%
+  \renewcommand{\theHparagraph}{\theHsubsubsection.\arabic{paragraph}}%
+  % Hook \part so the subpart-letter and shared-part flag both reset when a new
+  % part begins; otherwise state set in part N would leak into part N+1.
+  \let\banqOriginalPart\part
+  \renewcommand{\part}{%
+    \renewcommand{\banqSubpartLetter}{}%
+    \banqSharedPartfalse
+    \banqOriginalPart
+  }%
+  % The "I.\,10" prefix is wider than the default \numberline box. Widen the
+  % TOC number-box widths so two-digit section numbers don't overlap titles.
+  \setlength{\cftsecnumwidth}{3.5em}%
+  \setlength{\cftsubsecnumwidth}{4.2em}%
+  \setlength{\cftsubsubsecnumwidth}{5.2em}%
+}
+\makeatother
+
+% \banqSubpart{<letter>}
+% Marks the start of a sub-paper inside a part that contains multiple papers.
+% Sets the per-paper letter suffix appended to the part numeral in \thesection
+% (so headings read "IIa.1 Introduction", "IIb.1 Introduction", etc.) and
+% resets the section counter so the sub-paper's own numbering restarts at 1.
+% Pass an empty argument (\banqSubpart{}) to clear the suffix mid-part if
+% needed; the suffix also auto-clears at every \part boundary (see hook above).
+\newcommand{\banqSubpart}[1]{%
+  \renewcommand{\banqSubpartLetter}{#1}%
+  \setcounter{section}{0}%
+  \banqSharedParttrue
+}
+
+% \banq@RestoreLevels / \banq@DemoteLevels
+% Adjust hyperref's per-sectioning bookmark levels. When two sub-papers share a
+% \part (banq-lck "IIa" and banq-log "IIb" inside Part~II), each paper's
+% sections should nest under its own divider bookmark in the PDF outline,
+% rather than appearing as siblings of it under the part. Demoting
+% \toclevel@section from 1 to 2 (and the deeper levels accordingly) achieves
+% that nesting; \banqPaper calls Restore before emitting its own divider so the
+% divider always lands at level 1, then calls Demote afterwards (only when in a
+% shared part) so subsequent sections sit at level 2 = child of the divider.
+% Affects only the PDF outline depths; the printed TOC layout is unchanged.
+\makeatletter
+\newcommand{\banq@RestoreLevels}{%
+  \renewcommand{\toclevel@section}{1}%
+  \renewcommand{\toclevel@subsection}{2}%
+  \renewcommand{\toclevel@subsubsection}{3}%
+  \renewcommand{\toclevel@paragraph}{4}%
+}
+\newcommand{\banq@DemoteLevels}{%
+  \renewcommand{\toclevel@section}{2}%
+  \renewcommand{\toclevel@subsection}{3}%
+  \renewcommand{\toclevel@subsubsection}{4}%
+  \renewcommand{\toclevel@paragraph}{5}%
+}
+\makeatother
+
+% Storage for the current part's twemoji name. \banqPartWithEmoji sets it
+% (overwritten at each part boundary). \banqPaper reads it without clearing,
+% so multiple sub-papers within the same part (e.g. banq-lck and banq-log
+% in Part~II) share the same emoji on their respective cover pages.
+\makeatletter
+\def\banq@partemoji{}
+\newif\ifbanq@hasemoji
+\banq@hasemojifalse
+% \banqSetSubpartEmoji{<twemoji-name>}
+% Override the part's default emoji for the next sub-paper cover. Used inside
+% parts that contain multiple papers when each sub-paper deserves its own
+% cover icon (e.g. banq-lck takes "lock" while banq-log keeps the part-level
+% "gear"). Encapsulates the @-internal \gdef so the master document body need
+% not enter \makeatletter scope.
+\newcommand{\banqSetSubpartEmoji}[1]{\gdef\banq@partemoji{#1}}
+\makeatother
+
+% \banqForceRecto
+% Page-break helper that flushes outstanding output and ensures the next
+% content-bearing page lands on an odd (recto) page in duplex bindings.
+% The article class is loaded without `twoside` so \cleardoublepage degenerates
+% to \clearpage and will not pad; we check the page counter explicitly and
+% insert a blank filler when the upcoming page is even. \value{page} reflects
+% the next page number after \clearpage, before any content has been emitted
+% on it. Call sites: front-matter (TOC start, body start) and \banqPaper.
+\newcommand{\banqForceRecto}{%
+  \clearpage
+  \ifodd\value{page}\else\hbox{}\thispagestyle{empty}\newpage\fi
+}
+
+% \banqEnsureEvenPageCount
+% Final-pass parity helper: guarantees the document ends with an even total
+% page count, so duplex-bound copies have a back cover on the verso side and
+% any subsequent insert (e.g. a colophon, a bound-in errata sheet) starts on
+% a recto. After \clearpage, \value{page} holds the *next* page number, so
+% the current page count equals \value{page}-1; the count is even iff
+% \value{page} is odd, which is exactly the invariant \banqForceRecto already
+% enforces. The two operations are semantically distinct (recto-start vs.
+% even-total) but compute identical pad logic, so we alias them. Call once,
+% immediately before \end{document}, in the bundle root.
+\let\banqEnsureEvenPageCount\banqForceRecto
+
+% \banqPartWithEmoji{<title>}{<twemoji-name>}
+% Bumps the part counter, stashes the title for the part-level TOC entry,
+% and stashes the emoji for the cover page(s) that follow (see \banqPaper).
+% No physical divider page is emitted — the cover that immediately follows
+% is the visible boundary between parts. The bundle's section-numbering
+% scheme (I.1, IIa.1, IIb.1, III.1, ...) continues to work because
+% \refstepcounter drives the same counter \part would have, and
+% \@addtoreset (set up by \banqEnableBundleNumbering) still resets section
+% at the part boundary.
+%
+% The TOC entry itself is written by \banqPaper at the start of the cover
+% page rather than here, so the deferred page-number capture lands on the
+% cover (the visible part boundary) rather than on whatever page the build
+% happens to be on between subfiles.
+\makeatletter
+\def\banq@parttitle{}
+\newif\ifbanq@parttocpending
+\banq@parttocpendingfalse
+\newcommand{\banqPartWithEmoji}[2]{%
+  \refstepcounter{part}%
+  \renewcommand{\banqSubpartLetter}{}%
+  \banqSharedPartfalse
+  \gdef\banq@partemoji{#2}%
+  \global\banq@hasemojitrue
+  \gdef\banq@parttitle{#1}%
+  \global\banq@parttocpendingtrue
+}
+\makeatother
+
+% \banqAbstract{<abstract text>}{<keywords>}
+% Single source of truth for each child's abstract + keywords list, with
+% mode-aware rendering:
+%   - Standalone: emits a normal \begin{abstract}...\end{abstract} block
+%     followed by a "Keywords:" line (the previous \ifbundle\else ... \fi
+%     boilerplate each child used to inline).
+%   - Bundle: stashes the content into module-level token lists and sets
+%     \ifbanq@hasabstract; \banqPaper then renders it on the verso page that
+%     follows the cover (the page that was previously left blank).
+% Defined as \long so abstracts containing paragraph breaks are accepted,
+% though in practice all six abstracts are single-paragraph.
+\makeatletter
+\def\banq@abstracttext{}
+\def\banq@keywordstext{}
+\newif\ifbanq@hasabstract
+\banq@hasabstractfalse
+\long\def\banqAbstract#1#2{%
+  \ifbundle
+    \long\gdef\banq@abstracttext{#1}%
+    \long\gdef\banq@keywordstext{#2}%
+    \global\banq@hasabstracttrue
+  \else
+    \begin{abstract}#1\end{abstract}\par\medskip\noindent
+    \textbf{Keywords:} #2\par
+  \fi
+}
+\makeatother
+
+% \banqPaper{<title>}{<subtitle>}
+% Paper-level divider page printed at the top of each child's body when in
+% bundle mode. Sits below the \part page in the visual hierarchy and provides
+% a clear transition between consecutive papers within the same part (e.g.
+% banq-lck -> banq-log inside Part~II). A no-op in standalone builds.
+%
+% Wrapped in \makeatletter so the macro body can reference \banq@RestoreLevels,
+% \banq@DemoteLevels, and \@empty as single tokens rather than \banq + @… .
+\makeatletter
+\newcommand{\banqPaper}[2]{%
+  \ifbundle
+    % Force the cover page to land on an odd (recto) page; see \banqForceRecto.
+    \banqForceRecto
+    \onecolumn
+    \thispagestyle{empty}
+    % If a \banqPartWithEmoji call is pending, write its TOC + PDF-outline
+    % entry now so the captured page number is the cover page (the visible
+    % part boundary), not whatever blank pad the build happened to land on.
+    \ifbanq@parttocpending
+      \phantomsection
+      \addcontentsline{toc}{part}{\thepart\hspace{1em}\banq@parttitle}%
+      \global\banq@parttocpendingfalse
+    \fi
+    \vspace*{6em}
+    \begin{center}
+      {\Large\color{codegray} \textsc{XPower Banq: Part \Roman{part}\banqSubpartLetter}}\\[0.6em]
+      \rule{0.4\textwidth}{0.4pt}\\[1.2em]
+      {\fontsize{22}{26}\selectfont\bfseries #1}\\[0.8em]
+      {\large\color{codegray} #2}
+    \end{center}
+    \vspace*{\fill}
+    \ifbanq@hasemoji
+      \begin{center}
+        \twemoji[height=8cm]{\banq@partemoji}
+      \end{center}
+    \fi
+    \vspace*{\fill}
+    \clearpage
+    % Verso page after the cover. If the child supplied an abstract via
+    % \banqAbstract, render it here (still in onecolumn, unstyled body width
+    % so the prose breathes). Otherwise leave the page blank — used for the
+    % "References & Glossary" cover, which has no per-paper abstract since
+    % the bundle's front-matter abstract already summarises the whole volume.
+    \thispagestyle{empty}
+    \ifbanq@hasabstract
+      \vspace*{\fill}
+      \begin{center}{\large\bfseries Abstract}\end{center}
+      \medskip
+      \begingroup
+        \small
+        \noindent\banq@abstracttext\par
+        \medskip
+        \noindent\textbf{Keywords:} \banq@keywordstext\par
+      \endgroup
+      \vspace*{\fill}
+      \global\banq@hasabstractfalse
+    \else
+      \hbox{}%
+    \fi
+    \newpage
+    \twocolumn
+    % Register the divider in the TOC and PDF outline as a child of the part.
+    % Restore section bookmark levels first so this divider always lands at
+    % level 1 (regardless of any prior demotion left over from a sibling
+    % sub-paper), then conditionally demote so subsequent sections nest under
+    % this divider when we're inside a shared part.
+    \banq@RestoreLevels
+    \phantomsection
+    \addcontentsline{toc}{section}{\protect\numberline{\Roman{part}\banqSubpartLetter.}#1}%
+    \ifbanqSharedPart
+      \banq@DemoteLevels
+    \fi
+  \fi
+}
+\makeatother

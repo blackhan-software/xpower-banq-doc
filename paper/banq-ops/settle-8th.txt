@@ -1,0 +1,115 @@
+================================================================================
+SETTLE TRANSACTION ANALYSIS (Warm)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_settle_warm()
+Gas Used:         170,266  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 195,000
+User:             self — full interaction history (supply, borrow, settle, redeem)
+Amount:           half of remaining borrow balance
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+
+Prior state of `self`:
+  - supply(AVAX, 1000 AVAX)        already done in setUp
+  - borrow(AVAX, maxBorrow/4)      already done in setUp
+  - settle(AVAX, debt/10)          already done in setUp
+  - redeem(AVAX, supply/20)        already done in setUp
+
+Modifiers:        nonReentrant only (no ratelimited, no powlimited)
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.settle(AVAX, half_of_debt)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- _settle(self, AVAX, half_of_debt)
+  |     +-- AVAX.transferFrom(self -> pool)               [Transfer #1]
+  |     |
+  |     +-- Vault.deposit(amount)
+  |     |     +-- AVAX.transferFrom(pool -> vault)        [Transfer #2]
+  |     |     +-- Mint vAVAX shares to pool               [Transfer #3 - vAVAX]
+  |     |     +-- emit Reindex                            [Reindex #1]
+  |     |
+  |     +-- Convert shares to assets
+  |     |
+  |     +-- BorrowPosition.burn(self, assets)
+  |           +-- _accrueInterest(self)
+  |           |     +-- totalOf(self) > 0
+  |           |     +-- Calculate and accrue interest
+  |           |
+  |           +-- _burn(self, assets)
+  |                 +-- _decreaseHolders(existing, assets)
+  |                 +-- _reindexLess(self, assets)
+  |                 |     +-- _principalOf[self] -= amt   [WARM SSTORE: X->Y]
+  |                 |     +-- _userIndex[self] = index    [WARM SSTORE: X->Y]
+  |                 |
+  |                 +-- super._update(self, 0, assets)
+  |                 |     +-- _totalSupply -= value       [WARM SSTORE]
+  |                 |     +-- _balances[self] -= value    [WARM SSTORE: X->Y]
+  |                 |     +-- emit Transfer               [Transfer #4 - bAVAX burn]
+  |                 |
+  |                 +-- _reindex()
+  |                       +-- Vault.util() call
+  |                       +-- _index_ray, _stamp updates  [WARM SSTORE]
+  |                       +-- emit Reindex                [Reindex #2]
+  |
+  +-- No health check (settle reduces debt)
+  |
+  +-- emit Settle                                         [Settle event]
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy only)                 | ~3,000   | 1.8%
+AVAX transfers (user->pool, pool->vault)    | ~52,000  | 30.5%
+Vault.deposit() + vAVAX mint               | ~45,000  | 26.4%
+BorrowPosition.burn()                       | ~45,000  | 26.4%
+  - Warm SSTOREs                           | ~11,600  |
+  - Interest accrual                       | ~15,000  |
+  - Computation + events                   | ~18,400  |
+Pool Settle event + misc                   | ~25,266  | 14.8%
+--------------------------------------------|----------|------
+TOTAL                                       | 170,266  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. Gas is virtually IDENTICAL to cold settle (170,266 vs 170,263)
+2. Only 3 gas difference — within measurement noise
+3. All borrow-position storage is already warm in BOTH cases
+4. No health check, no rate limiting, no PoW check
+5. The "cold" vs "warm" distinction is meaningless for settle
+6. This confirms that settle has no user-specific cold storage overhead
+
+================================================================================
+WHY COLD == WARM FOR SETTLE
+================================================================================
+
+The "cold" settle user (cold2) already has warm borrow-position storage
+because they borrowed in setUp. The "warm" settle user (self) also has
+warm storage from their prior borrow.
+
+Since settle only BURNS borrow position tokens (never writes to new
+user-specific slots), there are no cold SSTOREs in either case.
+
+The only path to a truly "cold" settle would be if a user could settle
+without ever having borrowed — which is impossible (you must borrow
+before you can settle).
+
+================================================================================
