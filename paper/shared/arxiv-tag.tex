@@ -1,0 +1,13 @@
+% ==============================================================================
+% arxiv-tag.tex
+% The arXiv-style vertical preprint tag printed on the first page of each
+% standalone paper and on the bundle title page. The date is taken from
+% \banqArxivDate (defined in banq-meta.tex) and may be overridden locally
+% before \input{../shared/arxiv-tag} via \renewcommand.
+% ==============================================================================
+
+\begin{tikzpicture}[remember picture, overlay]
+  \node[rotate=90, anchor=center, font=\Huge, color=codegray]
+    at ([xshift=1cm]current page.west)
+    {\banqArxivId~~\banqArxivDate};
+\end{tikzpicture}

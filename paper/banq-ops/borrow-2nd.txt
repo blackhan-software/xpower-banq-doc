@@ -1,0 +1,150 @@
+================================================================================
+BORROW TRANSACTION ANALYSIS (Warm)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_borrow_warm()
+Gas Used:         345,363  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 415,000
+User:             self — full interaction history (supply, borrow, settle, redeem)
+Amount:           ~headroom/2 AVAX (remaining borrowable capacity / 2)
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+Rate Limit:       max=7 days, min=1 days
+
+Prior state of `self`:
+  - supply(AVAX, 1000 AVAX)        already done in setUp
+  - borrow(AVAX, maxBorrow/4)      already done in setUp
+  - settle(AVAX, debt/10)          already done in setUp
+  - redeem(AVAX, supply/20)        already done in setUp
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.borrow(AVAX, headroom/2)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- ratelimited modifier (storage reads - WARM)
+  |
+  +-- powlimited modifier (timestamp storage - WARM)
+  |
+  +-- _borrow(self, AVAX, headroom/2, dt_term=max)
+  |     +-- BorrowPosition.mint(self, amount, dt_term)
+  |     |     +-- _accrueInterest(self)
+  |     |     |     +-- totalOf(self) > 0 (has prior debt)
+  |     |     |     +-- Calculate accrued interest
+  |     |     |     +-- _mint(self, interest)           [INTEREST ACCRUAL]
+  |     |     |           +-- emit Transfer             [Transfer #1 - interest]
+  |     |     |           +-- _reindex()
+  |     |     |           +-- emit Reindex              [Reindex #1]
+  |     |     |
+  |     |     +-- Cap checks (abs_limit, rel_limit)
+  |     |     |
+  |     |     +-- _mint(self, amount)
+  |     |           +-- _increaseHolders(existing, amount)
+  |     |           |     +-- balanceOf(self) > threshold
+  |     |           |     +-- No _largeHolders update needed
+  |     |           |
+  |     |           +-- _reindexMore(self, amount)
+  |     |           |     +-- _principalOf[self] += amt  [WARM SSTORE: X->Y]
+  |     |           |     +-- _userIndex[self] = index   [WARM SSTORE: X->Y]
+  |     |           |
+  |     |           +-- super._update(0, self, amount)
+  |     |           |     +-- _totalSupply += value      [WARM SSTORE]
+  |     |           |     +-- _balances[self] += value   [WARM SSTORE: X->Y]
+  |     |           |     +-- emit Transfer              [Transfer #2 - bAVAX]
+  |     |           |
+  |     |           +-- _reindex()
+  |     |                 +-- Vault.util() call
+  |     |                 +-- _index_ray, _stamp updates [WARM SSTORE]
+  |     |                 +-- emit Reindex               [Reindex #2]
+  |     |
+  |     +-- Convert assets to vault shares
+  |     +-- vault.redeem(shares, self, pool)
+  |           +-- vAVAX burn (pool shares)               [Transfer #3 - vAVAX burn]
+  |           +-- AVAX transfer to self                   [Transfer #4 - AVAX]
+  |           +-- emit Withdraw                          [Withdraw event]
+  |
+  +-- _checkHealth(self)
+  |     +-- _healthOf(self) calculation
+  |     +-- Reads supply + borrow positions (WARM)
+  |     +-- Oracle price queries
+  |     +-- Requires wnav_supply >= wnav_borrow
+  |
+  +-- emit Borrow                                        [Borrow event]
+
+================================================================================
+WARM STORAGE WRITES (SSTORE X->Y = 2,900 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[self]               | bAVAX           | 2,900
+_principalOf[self]            | bAVAX           | 2,900
+_userIndex[self]              | bAVAX           | 2,900
+_largeHolders (no change)     | bAVAX           | 0
+------------------------------|-----------------|----------
+TOTAL WARM SSTORE             |                 | 8,700
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy, ratelimit, pow)      | ~8,000   | 2.3%
+BorrowPosition.mint() - warm storage        | ~105,000 | 30.4%
+  - Warm SSTOREs (3 x 2,900)               |   8,700  |
+  - Interest accrual mint                  | ~28,000  |
+  - External calls (util, decimals)        |  ~9,000  |
+  - Computation + events                   | ~59,300  |
+Vault.redeem() + vAVAX burn                | ~85,000  | 24.6%
+_checkHealth() - health computation         | ~110,000 | 31.8%
+  - _healthOf() calculation (warm reads)   | ~70,000  |
+  - Oracle price queries                   | ~40,000  |
+Pool events + misc                         | ~37,363  | 10.8%
+--------------------------------------------|----------|------
+TOTAL                                       | 345,363  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a WARM borrow — user already has a bAVAX position from prior borrow
+2. All user-specific mappings already have non-zero values
+3. SSTORE operations are cheap (2,900 gas vs 22,100 for cold)
+4. Interest accrual occurs (time passed since prior borrow)
+5. Interest accrual ADDS gas (~28k) partially offsetting storage savings
+6. Total gas is 20.6% lower than cold borrow (345,363 vs 434,871)
+7. _checkHealth() still dominates at ~32% (oracle queries not affected by warmth)
+
+================================================================================
+INTEREST ACCRUAL OVERHEAD
+================================================================================
+
+The warm borrow includes interest accrual which ADDS gas:
+
+Operation                     | Gas Cost
+------------------------------|----------
+_accrueable(user) calculation | ~2,000
+_mint(user, interest_amount)  | ~18,000
+  - _increaseHolders check    |  ~1,000
+  - _reindexMore              |  ~5,000
+  - super._update             |  ~5,000
+  - _reindex                  |  ~4,000
+  - emit Transfer             |  ~3,000
+------------------------------|----------
+TOTAL INTEREST OVERHEAD       | ~20,000
+
+This overhead partially offsets the cold->warm storage savings.
+
+================================================================================
