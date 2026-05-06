@@ -1,0 +1,124 @@
+================================================================================
+REDEEM TRANSACTION COMPARISON (Cold vs Warm)
+================================================================================
+
+                              | Cold            | Warm            | Difference
+------------------------------|-----------------|-----------------|------------
+Source                        | redeem_cold()   | redeem_warm()   |
+User                          | cold2           | self            |
+Gas Used                      | 314,549         | 314,558         | +9
+Gas Savings                   |                 |                 | ~0.0%
+Upper Bound                   | < 375,000       | < 375,000       | same
+
+================================================================================
+ZERO-DIFFERENCE EXPLANATION
+================================================================================
+
+Like settle, redeem shows NO meaningful cold-warm gas difference.
+
+This is because redeem only BURNS existing supply position tokens — it does not
+create new user-specific storage slots. The user necessarily already has warm
+supply-position storage from the prior supply() call that created the position.
+
+The 9-gas "difference" is measurement noise (< 0.003% of total gas).
+
+================================================================================
+WHY REDEEM CANNOT HAVE COLD USER STORAGE
+================================================================================
+
+To redeem supply, a user must have previously supplied:
+
+  1. User calls supply() → creates supply position (cold SSTORE: 0->X)
+  2. Time passes, interest accrues
+  3. User calls redeem() → burns supply position (warm SSTORE: X->Y)
+
+Step 3 always operates on slots that were initialized in Step 1.
+There is no code path where redeem writes to a new user-specific slot.
+
+================================================================================
+COMPARISON WITH ALL OPERATIONS
+================================================================================
+
+Operation | Cold Gas  | Warm Gas  | Savings | % Savings
+----------|-----------|-----------|---------|----------
+Supply    | 324,660   | 243,980   | 80,680  | 24.8%
+Borrow    | 434,871   | 345,363   | 89,508  | 20.6%
+Settle    | 170,263   | 170,266   | ~0      | 0.0%
+Redeem    | 314,549   | 314,558   | ~0      | 0.0%
+
+Pattern:
+  - CREATING positions (supply, borrow) → significant cold/warm diff
+  - DESTROYING positions (settle, redeem) → no cold/warm diff
+
+This pattern is fundamental to the EVM storage model:
+  - Cold SSTOREs (0→X) only occur when creating new user positions
+  - Burning tokens modifies existing (warm) slots
+  - The cold/warm distinction only matters for position-creating operations
+
+================================================================================
+WHY REDEEM IS MORE EXPENSIVE THAN SETTLE
+================================================================================
+
+                        | Settle    | Redeem    | Diff
+------------------------|-----------|-----------|--------
+Gas Used                | 170,263   | 314,549   | +144,286
+Health Check            | No        | Yes       | +120,000
+Vault Operation         | deposit   | redeem    | +40,000*
+Position Operation      | burn bAPOW| burn sAVAX| ~0
+Modifiers               | nonReent  | nonReent  | ~0
+
+* Vault.redeem() is more expensive than Vault.deposit() due to
+  ERC4626 preview/convert overhead and different transfer direction
+
+The ~144k gas difference is almost entirely explained by:
+  1. _checkHealth() after redeem:     ~120k gas
+  2. Vault redeem vs deposit:         ~40k gas
+  3. Misc differences:                ~-16k gas
+
+================================================================================
+REDEEM GAS CHARACTERISTICS
+================================================================================
+
+1. SECOND MOST EXPENSIVE: After borrow (~435k), redeem (~315k) is costliest
+
+2. HEALTH CHECK DOMINATES: ~38% of total gas goes to _checkHealth()
+   - Redeeming reduces collateral, must verify solvency
+   - Oracle queries are the main cost within health check
+
+3. NO RATE/POW LIMITS: Unlike supply/borrow, redeem has no rate limiting
+   - Only nonReentrant modifier (~3k gas overhead)
+   - Protocol doesn't restrict withdrawals
+
+4. CONSISTENT GAS: No variability between first and subsequent redeems
+
+================================================================================
+DESIGN IMPLICATIONS
+================================================================================
+
+The gas cost structure creates an incentive gradient:
+
+  Operation    | Gas      | Health Check | Rate/PoW | Creates Slots
+  -------------|----------|-------------|----------|---------------
+  Settle       | ~170k   | No          | No       | No
+  Supply       | ~244-325k| No         | Yes      | Yes (cold)
+  Redeem       | ~315k   | Yes         | No       | No
+  Borrow       | ~345-435k| Yes        | Yes      | Yes (cold)
+
+Key design choices:
+  - Debt repayment (settle) is cheapest — encourages responsible behavior
+  - Collateral provision (supply) is rate-limited but no health check
+  - Collateral withdrawal (redeem) requires health check but no rate limit
+  - Debt creation (borrow) is most expensive — rate-limited + health checked
+
+================================================================================
+SUMMARY
+================================================================================
+
+1. Cold/Warm difference: ~0 gas (9 gas noise)
+2. Redeem cannot have cold user storage (requires prior supply)
+3. Second most expensive operation at ~315k execution gas
+4. Health check accounts for ~38% of total gas
+5. No rate limiting or PoW check
+6. ~144k more expensive than settle (health check + vault redeem overhead)
+
+================================================================================

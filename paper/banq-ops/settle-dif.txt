@@ -1,0 +1,104 @@
+================================================================================
+SETTLE TRANSACTION COMPARISON (Cold vs Warm)
+================================================================================
+
+                              | Cold            | Warm            | Difference
+------------------------------|-----------------|-----------------|------------
+Source                        | settle_cold()   | settle_warm()   |
+User                          | cold2           | self            |
+Gas Used                      | 170,263         | 170,266         | +3
+Gas Savings                   |                 |                 | ~0.0%
+Upper Bound                   | < 195,000       | < 195,000       | same
+
+================================================================================
+ZERO-DIFFERENCE EXPLANATION
+================================================================================
+
+Unlike supply and borrow, settle shows NO cold-warm gas difference.
+
+This is because settle only BURNS existing borrow position tokens — it does not
+create new user-specific storage slots. The user necessarily already has warm
+borrow-position storage from the prior borrow() call that created the debt.
+
+The 3-gas "difference" is measurement noise (< 0.002% of total gas).
+
+================================================================================
+WHY SETTLE CANNOT HAVE COLD USER STORAGE
+================================================================================
+
+To settle debt, a user must have previously borrowed:
+
+  1. User calls borrow() → creates borrow position (cold SSTORE: 0->X)
+  2. Time passes, interest accrues
+  3. User calls settle() → burns borrow position (warm SSTORE: X->Y)
+
+Step 3 always operates on slots that were initialized in Step 1.
+There is no code path where settle writes to a new user-specific slot.
+
+This is fundamentally different from supply and borrow:
+
+  supply():  Creates NEW supply position slots for first-time suppliers
+  borrow():  Creates NEW borrow position slots for first-time borrowers
+  settle():  Modifies EXISTING borrow position slots (always warm)
+  redeem():  Modifies EXISTING supply position slots (always warm)
+
+================================================================================
+COMPARISON WITH OTHER OPERATION DIFFS
+================================================================================
+
+Operation | Cold Gas  | Warm Gas  | Savings | % Savings
+----------|-----------|-----------|---------|----------
+Supply    | 324,660   | 243,980   | 80,680  | 24.8%
+Borrow    | 434,871   | 345,363   | 89,508  | 20.6%
+Settle    | 170,263   | 170,266   | ~0      | 0.0%
+Redeem    | 314,549   | 314,558   | ~0      | 0.0%
+
+Pattern:
+  - CREATING positions (supply, borrow) → significant cold/warm diff
+  - DESTROYING positions (settle, redeem) → no cold/warm diff
+
+================================================================================
+SETTLE GAS CHARACTERISTICS
+================================================================================
+
+1. CHEAPEST OPERATION: Settle is the least expensive pool operation (~170k gas)
+
+2. NO MODIFIERS OVERHEAD: Only nonReentrant (no ratelimited, no powlimited)
+   - Supply and borrow have 3 modifiers each (~10k gas overhead)
+   - Settle and redeem have only 1 modifier (~3k gas)
+
+3. NO HEALTH CHECK: Settling reduces debt, strictly improving health
+   - Borrow and redeem require _checkHealth() (~110-120k gas)
+   - This is the main reason settle is cheaper than borrow/redeem
+
+4. CONSISTENT GAS: No variability between first and subsequent settles
+
+================================================================================
+DESIGN IMPLICATIONS
+================================================================================
+
+The protocol deliberately makes settle the cheapest operation:
+
+1. No rate limiting     — encourage debt repayment
+2. No PoW difficulty   — remove barriers to settlement
+3. No health check     — settling always improves position
+4. Low base gas        — minimize cost of responsible behavior
+
+This creates a gas incentive gradient:
+
+  Highest gas:  borrow (434k)  — expensive to take on risk
+  Mid-high:     supply (324k)  — moderately expensive to provide capital
+  Mid-low:      redeem (314k)  — moderately expensive to withdraw capital
+  Lowest gas:   settle (170k)  — cheap to repay debt
+
+================================================================================
+SUMMARY
+================================================================================
+
+1. Cold/Warm difference: ~0 gas (3 gas noise)
+2. Settle cannot have cold user storage (requires prior borrow)
+3. Cheapest pool operation at ~170k execution gas
+4. No rate limiting, no PoW check, no health check
+5. Protocol design deliberately minimizes settle gas cost
+
+================================================================================

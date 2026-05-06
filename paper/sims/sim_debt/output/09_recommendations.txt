@@ -1,0 +1,15 @@
+============================================================
+Bad Debt Risk Quantification — Parameter Recommendations
+============================================================
+
+Safe configurations (BD bound < 5% for 50% crash):
+
+  alpha=0.8909 (HL=6.0h)  LTV=0.3333  BD_bound=0.00%
+  alpha=0.8909 (HL=6.0h)  LTV=0.5000  BD_bound=0.00%
+  alpha=0.8909 (HL=6.0h)  LTV=0.6667  BD_bound=3.51%
+  alpha=0.9439 (HL=12.0h)  LTV=0.3333  BD_bound=0.00%
+  alpha=0.9439 (HL=12.0h)  LTV=0.5000  BD_bound=0.00%
+  alpha=0.9715 (HL=24.0h)  LTV=0.3333  BD_bound=0.00%
+  alpha=0.9715 (HL=24.0h)  LTV=0.5000  BD_bound=0.00%
+
+============================================================

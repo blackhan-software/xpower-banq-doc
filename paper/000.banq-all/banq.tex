@@ -1,0 +1,101 @@
+% ==============================================================================
+% banq.tex — Master root document for the unified XPower Banq bundle.
+%
+% This document is built from paper/ via:
+%     pdflatex -output-directory=000.banq-all 000.banq-all/banq.tex
+% (The build script at 000.banq-all/banq-all.sh handles the two-pass run.)
+%
+% In bundle mode (\bundletrue, set below), all child papers suppress their
+% own title pages, abstracts, bibliographies, and glossaries via \ifbundle
+% guards in their .tex sources. The bundle's unified front matter, master
+% TOC, consolidated bibliography, and glossary are supplied here.
+% ==============================================================================
+
+\documentclass[10pt,a4paper,twocolumn]{article}
+\usepackage{subfiles}
+
+\input{shared/banq-preamble}
+\input{shared/banq-meta}
+\input{shared/banq-bundle}
+
+% Rebind the six Twemoji glyphs the bundle emits (bank front-page + five part
+% dividers) to local grayscale sub-PDFs extracted from all-twemojis.pdf.
+\input{shared/banq-emoji}
+
+% Switch ALL \ifbundle guards in the children to the bundle branch.
+\bundletrue
+
+% Reset section counter at each \part and prefix with Roman part numeral
+% so the bundle reads "I.1 Introduction", "II.1 Introduction", ...
+\banqEnableBundleNumbering
+
+\title{\textbf{\Huge XPower Banq}\\[0.5em]
+\Large A Permissionless DeFi Lending Protocol\\
+\large \textit{Protocol, Engineering Primitives, Theory, Evaluation, and Reference}}
+
+\author{\banqAuthor\thanks{\banqAuthorContact}}
+
+\date{}
+
+\begin{document}
+
+% ------------------------------------------------------------------------------
+% Front matter: unified title page, abstract, master TOC.
+% ------------------------------------------------------------------------------
+\onecolumn
+\input{000.banq-all/banq-front}
+\twocolumn
+
+% ------------------------------------------------------------------------------
+% Part I — Protocol
+% ------------------------------------------------------------------------------
+\banqPartWithEmoji{Protocol}{scroll}
+\subfile{001.banq-pro/banq-pro}
+
+% ------------------------------------------------------------------------------
+% Part II — Engineering Primitives
+% ------------------------------------------------------------------------------
+% Two sub-papers share this part: tag them "IIa" (banq-lck) and "IIb" (banq-log)
+% via \banqSubpart so each restarts its section numbering from 1 and the TOC
+% can disambiguate identically titled sections (e.g. "Introduction" appears in
+% both papers).
+\banqPartWithEmoji{Engineering Primitives}{gear}
+\banqSubpart{a}
+% banq-lck's cover gets the "lock" emoji rather than the part's default
+% "gear", since the paper is specifically about time-locked positions; the
+% part-level "gear" stays as the divider's logical anchor and as banq-log's
+% cover emoji (restored below before the second subfile).
+\banqSetSubpartEmoji{lock}
+\subfile{002.banq-lck/banq-lck}
+\clearpage
+\banqSubpart{b}
+\banqSetSubpartEmoji{gear}
+\subfile{003.banq-log/banq-log}
+
+% ------------------------------------------------------------------------------
+% Part III — Theory
+% ------------------------------------------------------------------------------
+\banqPartWithEmoji{Theory}{triangular ruler}
+\subfile{004.banq-mtp/banq-mtp}
+
+% ------------------------------------------------------------------------------
+% Part IV — Evaluation
+% ------------------------------------------------------------------------------
+\banqPartWithEmoji{Evaluation}{bar chart}
+\subfile{005.banq-sim/banq-sim}
+
+% ------------------------------------------------------------------------------
+% Part V — Reference (consolidated bibliography then glossary).
+% The subfile owns its full Part V: it emits the paper divider, inputs the
+% consolidated bibliography (suppressed in standalone mode where it has its
+% own per-doc thebibliography), then emits the glossary. This keeps Part V
+% structurally symmetric with Parts I–IV (one \banqPartWithEmoji + one
+% \subfile call) — see 006.banq-ref/banq-ref.tex for the bundle-mode logic.
+% ------------------------------------------------------------------------------
+\banqPartWithEmoji{Reference}{books}
+\subfile{006.banq-ref/banq-ref}
+
+% Pad to an even total page count so duplex-bound copies finish on a verso.
+\banqEnsureEvenPageCount
+
+\end{document}

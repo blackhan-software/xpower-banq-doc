@@ -1,0 +1,117 @@
+================================================================================
+SUPPLY TRANSACTION ANALYSIS (Cold)
+================================================================================
+
+Source:           PoolGasBenchmark.test_gas_supply_cold()
+Gas Used:         324,660  (execution only, excludes 21k intrinsic)
+Upper Bound:      < 405,000
+User:             cold0 (0xc010) — never interacted with pool
+Amount:           100 AVAX (18 decimals)
+Vault Fee:        None (VAULT_NIL)
+
+================================================================================
+TEST CONTEXT
+================================================================================
+
+Token:            GasToken("AVAX", 18)
+Oracle:           GasOracle (GasPair 1000e18:1000e6, i.e. 1:1 AVAX/USDC)
+Weight:           borrow=255, supply=170
+IR Model:         util=90%, rate=10%, spread=0%
+Rate Limit:       max=7 days, min=1 days
+WSupplyPosition:  Wrapped position wrapper is deployed and enrolled
+
+================================================================================
+EXECUTION FLOW
+================================================================================
+
+Pool.supply(AVAX, 100e18)
+  |
+  +-- nonReentrant (ReentrancyGuardTransient: TSTORE/TLOAD)
+  |
+  +-- ratelimited modifier (storage reads, key=hash(selector,user,token))
+  |
+  +-- powlimited modifier (difficulty check based on token + amount)
+  |
+  +-- AVAX.transferFrom(user -> pool)                 [Transfer #1]
+  |
+  +-- Vault.deposit(amount)
+  |     +-- AVAX.transferFrom(pool -> vault)          [Transfer #2]
+  |     +-- Mint vAVAX shares to pool                 [Transfer #3 - vAVAX]
+  |     +-- emit Reindex                              [Reindex #1]
+  |
+  +-- SupplyPosition.mint(user, assets, lock=false)
+  |     +-- _accrueInterest(user)
+  |     |     +-- totalOf(user) = 0 (no interest)
+  |     |
+  |     +-- Cap checks (abs_limit, rel_limit)
+  |     |
+  |     +-- _mint(user, amount)
+  |           +-- _increaseHolders(0, assets)
+  |           |     +-- balanceOf(user) = 0
+  |           |     +-- 0 < threshold
+  |           |     +-- _largeHolders++               [WARM SSTORE: N->N+1]
+  |           |
+  |           +-- _reindexMore(user, assets)
+  |           |     +-- _principalOf[user] += amount  [COLD SSTORE: 0->X]
+  |           |     +-- _userIndex[user] = index      [COLD SSTORE: 0->X]
+  |           |
+  |           +-- super._update(0, user, assets)
+  |           |     +-- _totalSupply += value         [WARM SSTORE]
+  |           |     +-- _balances[user] += value      [COLD SSTORE: 0->X]
+  |           |     +-- emit Transfer                 [Transfer #4 - sAVAX]
+  |           |
+  |           +-- _reindex()
+  |                 +-- Vault.util() call
+  |                 +-- _index_ray, _stamp updates    [WARM SSTORE]
+  |                 +-- emit Reindex                  [Reindex #2]
+  |
+  +-- No fee transfer (vault fee = 0)
+  |
+  +-- emit Supply                                     [Supply event]
+
+================================================================================
+COLD STORAGE WRITES (SSTORE 0->X = 22,100 gas each)
+================================================================================
+
+Slot                          | Contract        | Gas Cost
+------------------------------|-----------------|----------
+_balances[user]               | sAVAX           | 22,100
+_principalOf[user]            | sAVAX           | 22,100
+_userIndex[user]              | sAVAX           | 22,100
+_largeHolders (counter)       | sAVAX           | 2,900*
+------------------------------|-----------------|----------
+TOTAL USER-SPECIFIC SSTORE    |                 | 69,200
+
+* _largeHolders already non-zero (other users exist), so warm modify
+
+================================================================================
+GAS BREAKDOWN (ESTIMATED)
+================================================================================
+
+Category                                    | Gas      | %
+--------------------------------------------|----------|------
+Modifiers (reentrancy, ratelimit, pow)      | ~10,000  | 3.1%
+AVAX transfers (user->pool, pool->vault)    | ~52,000  | 16.0%
+Vault.deposit() + vAVAX mint               | ~45,000  | 13.9%
+SupplyPosition.mint() - cold storage        | ~148,000 | 45.6%
+  - Cold SSTOREs (3 x 22,100)              |  66,300  |
+  - Warm SSTORE (_largeHolders)            |   2,900  |
+  - External calls (util, decimals)        |  ~9,000  |
+  - Computation + events                   | ~69,800  |
+Pool events + misc                         | ~69,660  | 21.5%
+--------------------------------------------|----------|------
+TOTAL                                       | 324,660  | 100%
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. This is a COLD supply — user has never supplied before
+2. All user-specific mappings start at zero, requiring expensive cold SSTOREs
+3. The _largeHolders counter is incremented (user crosses threshold)
+4. Cold SSTORE cost (66,300 gas) represents ~20% of total gas
+5. SupplyPosition.mint() is the largest gas consumer at ~46% of total
+6. No vault fee transfer (test uses VAULT_NIL)
+7. No health check required for supply operations
+
+================================================================================
