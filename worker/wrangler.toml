@@ -1,0 +1,51 @@
+# Worker identity & runtime
+name = "ai-xpowerbanq"                           # Worker name on Cloudflare (script slug)
+main = "source/index.ts"                         # Entry module bundled by wrangler
+compatibility_date = "2025-09-01"                # Pins the workerd runtime semantics
+compatibility_flags = ["nodejs_compat"]          # Enables Node built-ins (Buffer, process, etc.)
+
+# Custom domain — Wrangler auto-provisions DNS + edge cert on `wrangler deploy`.
+routes = [
+  { pattern = "ai.xpowerbanq.com", custom_domain = true }
+]
+
+# Make .md files importable as raw text strings (used to embed ai-corpus.md).
+[[rules]]
+type = "Text"                                    # Bundle matched files as string modules
+globs = ["**/*.md"]                              # Targets every markdown file in the worker tree
+fallthrough = true                               # Let later rules also see these files
+
+# Plain-text vars baked into the deployed Worker (non-secret).
+[vars]
+API_PROVIDER = "deepseek"                        # Upstream selector: "anthropic" or "deepseek"
+MODEL = "deepseek-v4-flash"                      # Model (claude-sonnet-4-6, deepseek-v4-pro, etc.)
+MAX_TOKENS = "2048"                              # Per-response output cap
+ALLOWED_ORIGINS = "https://www.xpowerbanq.com,http://localhost:5174"  # CORS allow-list
+
+# Per-IP rate-limit storage. Create with: `wrangler kv namespace create RATELIMIT`
+[[kv_namespaces]]
+binding = "XPOWERBANQ_RL"                        # env.RATELIMIT inside the Worker
+id = "52de5effcaf440459e67de5ab718b712"          # KV namespace ID (account-scoped)
+
+# Regenerate the bundled corpus on deploy; `--if-missing` avoids a watcher loop in dev.
+# Manual refresh: `npm run ai-corpus` from the repo root.
+[build]
+command = "node ../scripts/ai-corpus/index.mjs --if-missing"
+
+# Observability master gate (sub-tables below only fire when this is on).
+[observability]
+enabled = true                                   # On — required for the sub-tables
+head_sampling_rate = 1                           # 100% sampling (drop to ~0.1 if QPS grows)
+
+# Structured request/console logs (Workers Logs).
+[observability.logs]
+enabled = true                                   # Stream logs to the dashboard / `wrangler tail`
+head_sampling_rate = 1                           # Capture every invocation
+persist = true                                   # Retain logs beyond the live tail window
+invocation_logs = true                           # Include per-invocation request metadata
+
+# Distributed traces (Workers Tracing).
+[observability.traces]
+enabled = true                                   # Emit spans for each request
+persist = true                                   # Retain traces for later inspection
+head_sampling_rate = 1                           # Trace every invocation
