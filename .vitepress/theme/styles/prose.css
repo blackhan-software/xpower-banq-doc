@@ -1,0 +1,10 @@
+.vp-doc p,
+.vp-doc li {
+  text-align: justify;
+  hyphens: auto;
+}
+
+.VPFeature .details {
+  text-align: justify;
+  hyphens: auto;
+}

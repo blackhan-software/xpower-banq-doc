@@ -1,0 +1,20 @@
+.vp-doc .toc-grid h3 .bi {
+  color: var(--vp-c-brand-1);
+  font-size: 1.25em;
+  margin-right: 0.4em;
+  vertical-align: -0.08em;
+}
+
+.VPFeature .title .bi {
+  color: var(--vp-c-brand-1);
+  font-size: 1.15em;
+  margin-right: 0.35em;
+  vertical-align: -0.08em;
+}
+
+.vp-doc h2 .bi,
+.vp-doc h3 .bi {
+  color: var(--vp-c-brand-1);
+  margin-left: 0.4em;
+  vertical-align: -0.08em;
+}

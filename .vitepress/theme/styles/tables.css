@@ -1,0 +1,17 @@
+.vp-doc table {
+  display: block;
+  overflow-x: auto;
+  min-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .vp-doc table {
+    display: table;
+    table-layout: fixed;
+  }
+}
+
+/* Headerless tables opt out via all-empty `th`s — markdown requires the row syntactically. */
+.vp-doc table thead:not(:has(th:not(:empty))) {
+  display: none;
+}

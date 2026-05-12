@@ -1,0 +1,112 @@
+.vp-doc .toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.75rem;
+  margin: 2rem 0 0;
+}
+
+.vp-doc .toc-grid > div {
+  position: relative;
+  padding: 1.5rem;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  counter-reset: toc-pages;
+  transition: border-color .2s ease;
+}
+
+.vp-doc .toc-grid > div:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.vp-doc .toc-grid > div li {
+  counter-increment: toc-pages;
+}
+
+.vp-doc .toc-grid > div::after {
+  content: counter(toc-pages) " pages";
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  padding: 0.1rem 0.55rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+}
+
+.vp-doc .toc-grid h3 {
+  margin: 0;
+  padding: 0 4.5rem 0 0;
+  border-top: none;
+  font-size: 1rem;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+}
+
+.vp-doc .toc-grid h3 a {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vp-doc .toc-grid h3 a:hover {
+  color: var(--vp-c-brand-1);
+  text-shadow: 0 1px 1.5px hsla(300, 100%, 47%, 0.2);
+}
+
+.vp-doc .toc-grid h3 .header-anchor {
+  display: none;
+}
+
+.vp-doc .toc-grid ul {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding-left: 0.25rem;
+}
+
+.vp-doc .toc-grid li {
+  position: relative;
+  margin: 0.2rem 0;
+  padding-left: 1rem;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.vp-doc .toc-grid li::before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: var(--vp-c-brand-1);
+  font-size: 0.85em;
+}
+
+.vp-doc .toc-grid li a {
+  text-decoration: none;
+  transition: color .15s ease;
+}
+
+.vp-doc .toc-grid li a:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+  text-shadow: 0 1px 1.5px hsla(300, 100%, 47%, 0.2);
+}
+
+.vp-doc h2:has(+ .toc-grid) {
+  border-top: none;
+  position: relative;
+}
+
+.vp-doc h2:has(+ .toc-grid)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--vp-c-brand-1), transparent);
+}

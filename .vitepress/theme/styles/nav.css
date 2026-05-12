@@ -1,0 +1,18 @@
+/*
+ * Top nav has 9 items, which crowd between VitePress's 768px (menu shows) and
+ * 960px (sidebar/fixed-nav layout) breakpoints. Collapse to the hamburger menu
+ * up to 960px instead of 768px so the inline menu only renders when it fits.
+ * Overrides VitePress default-theme scoped styles, hence !important.
+ */
+@media (min-width: 768px) and (max-width: 959.9px) {
+  .VPNavBarMenu {
+    display: none !important;
+  }
+  .VPNavBarHamburger {
+    display: flex !important;
+  }
+  /* VPNavScreen is v-if'd in only when open; this lets it render in this band */
+  .VPNavScreen {
+    display: block !important;
+  }
+}
